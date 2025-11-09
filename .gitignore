@@ -1,0 +1,12 @@
+# Ignorer tous les fichiers de données
+data/
+
+# Ignorer le fichier de secrets
+.env
+
+# Ignorer les fichiers cache de Python
+__pycache__/
+*.pyc
+
+# Ignorer
+.idea
