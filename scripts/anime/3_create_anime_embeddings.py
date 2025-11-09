@@ -4,11 +4,11 @@ import numpy as np
 
 print("Loading the clean database (clean_root_animes.json)...")
 try:
-    with open('../data/processed/clean_root_animes.json', 'r', encoding='utf-8') as f:
+    with open('../../data/processed/clean_root_animes.json', 'r', encoding='utf-8') as f:
         clean_animes_db = json.load(f)
 except FileNotFoundError:
     print("ERROR: The file 'clean_root_animes.json' was not found.")
-    print("Please run Phase 1B (2_filter_franchise.py) first.")
+    print("Please run Phase 1B (2_filter_anime_franchise.py) first.")
     exit()
 
 # --- Data Preparation ---
@@ -53,13 +53,13 @@ corpus_embeddings = model.encode(corpus, show_progress_bar=True)
 # --- Saving the results ---
 
 # 1. Save the vectors
-np.save('../data/artifacts/clean_vectors.npy', corpus_embeddings)
-print(f"Vectors saved in 'clean_vectors.npy'")
+np.save('../../data/artifacts/anime_vectors.npy', corpus_embeddings)
+print(f"Vectors saved in 'anime_vectors.npy'")
 
 # 2. Save the lookup list (TITLE + POPULARITY)
 # THIS IS THE FILE YOU WERE MISSING
-with open('../data/artifacts/clean_data_for_lookup.json', 'w', encoding='utf-8') as f:
+with open('../../data/artifacts/anime_data_for_lookup.json', 'w', encoding='utf-8') as f:
     json.dump(data_for_lookup, f, indent=2)
 
-print(f"Lookup data saved in 'clean_data_for_lookup.json'")
+print(f"Lookup data saved in 'anime_data_for_lookup.json'")
 print("--- Phase 2 (Creating Embeddings) Complete! ---")

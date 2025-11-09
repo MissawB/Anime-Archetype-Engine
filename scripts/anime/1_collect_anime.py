@@ -76,7 +76,7 @@ while has_next_page:
         break
 
 # At the end, save everything to a file
-with open('../data/raw/raw_anilist_db.json', 'w', encoding='utf-8') as f:
+with open('../../data/raw/raw_anilist_db.json', 'w', encoding='utf-8') as f:
     json.dump(all_animes, f, indent=2, ensure_ascii=False)
 
 print("Collection finished!")

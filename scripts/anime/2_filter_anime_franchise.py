@@ -1,7 +1,7 @@
 import json
 
 print("Loading the raw database...")
-with open('../data/raw/raw_anilist_db.json', 'r', encoding='utf-8') as f:
+with open('../../data/raw/raw_anilist_db.json', 'r', encoding='utf-8') as f:
     all_animes = json.load(f)
 
 # 1. Create a dictionary for quick access by ID
@@ -62,7 +62,7 @@ for anime_id, anime in animes_map.items():
         clean_root_animes.append(clean_data)
 
 # 4. Save the clean database
-with open('../data/processed/clean_root_animes.json', 'w', encoding='utf-8') as f:
+with open('../../data/processed/clean_root_animes.json', 'w', encoding='utf-8') as f:
     json.dump(clean_root_animes, f, indent=2, ensure_ascii=False)
 
 print(f"--- Phase 1B (Filtering) Complete! ---")
