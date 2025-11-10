@@ -1,4 +1,30 @@
+import re
 import json
+
+
+def clean_description(text):
+    """
+    Clean the anime description by removing HTML tags,
+    """
+    if not text:
+        return ""  # Return empty string if text is None or empty
+
+    # 1. Delete HTML tags
+    text = re.sub(r'<[^>]+>', ' ', text)
+
+    # 2. Delete the part "(Source:...)"
+    text = text.split('(Source:')[0].strip()
+
+    # 3. Delete the part "Notes:"
+    text = text.split('Notes:')[0].strip()
+
+    # 4. Remove URLs
+    text = re.sub(r'https?://\S+', '', text)
+
+    # 5. Normalize whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    return text
 
 print("Loading the raw database...")
 with open('../../data/raw/raw_anilist_db.json', 'r', encoding='utf-8') as f:
@@ -20,9 +46,7 @@ non_root_ids = set()
 
 # Relationship types that "disqualify" an anime
 RELATIONS_TO_EXCLUDE = [
-    'SEQUEL',
     'PREQUEL',
-    'SPIN_OFF',
     'REMAKE',
     'ALTERNATIVE_SETTING',
     'ALTERNATIVE_VERSION'
@@ -51,12 +75,25 @@ print(f"{len(non_root_ids)} animes identified as non-roots (sequels, OVAs, etc.)
 clean_root_animes = []
 for anime_id, anime in animes_map.items():
     if anime_id not in non_root_ids:
+        TAG_RELEVANCE_THRESHOLD = 70
+
+        clean_tags = []
+        if 'tags' in anime and anime['tags']:
+            for tag in anime['tags']:
+                # We only keep tags with a rank above the threshold
+                if tag.get('rank') and tag['rank'] >= TAG_RELEVANCE_THRESHOLD:
+                    clean_tags.append(tag['name'])
+
+        #  Clean the description
+        clean_desc = clean_description(anime.get('description'))
+
         # We only keep the fields useful for what follows
         clean_data = {
             'title': anime['title']['romaji'],
-            'description': anime['description'],
+            'title_english': anime['title']['english'],
+            'description': clean_desc,
             'genres': anime['genres'],
-            'tags': [tag['name'] for tag in anime['tags']],
+            'tags': clean_tags,
             'popularity': anime['popularity']
         }
         clean_root_animes.append(clean_data)

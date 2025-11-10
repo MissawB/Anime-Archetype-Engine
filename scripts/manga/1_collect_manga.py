@@ -19,11 +19,13 @@ query ($page: Int, $perPage: Int) {
       popularity # For weighted selection
       title {
         romaji
+        english
       }
       description(asHtml: false)
       genres
       tags {
         name
+        rank
       }
       relations { # ESSENTIAL for filtering
         edges {

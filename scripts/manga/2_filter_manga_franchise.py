@@ -1,4 +1,29 @@
+import re
 import json
+
+def clean_description(text):
+    """
+    Clean the manga description,
+    """
+    if not text:
+        return ""  # Return empty string if text is None or empty
+
+    # 1. Delete HTML tags
+    text = re.sub(r'<[^>]+>', ' ', text)
+
+    # 2. Delete the part "(Source:...)"
+    text = text.split('(Source:')[0].strip()
+
+    # 3. Delete the part "Notes:"
+    text = text.split('Notes:')[0].strip()
+
+    # 4. Remove URLs
+    text = re.sub(r'https?://\S+', '', text)
+
+    # 5. Normalize whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    return text
 
 print("Loading the raw database...")
 with open('../../data/raw/raw_anilist_manga_db.json', 'r', encoding='utf-8') as f:
@@ -20,9 +45,6 @@ non_root_ids = set()
 
 # Relationship types that "disqualify" a manga
 RELATIONS_TO_EXCLUDE = [
-    'SEQUEL',
-    'PREQUEL',
-    'SPIN_OFF',
     'REMAKE',
     'ALTERNATIVE_SETTING',
     'ALTERNATIVE_VERSION'
@@ -50,13 +72,24 @@ print(f"{len(non_root_ids)} mangas identified as non-roots (sequels, spin-offs, 
 # 3. Build the final and clean database
 clean_root_mangas = []
 for manga_id, manga in mangas_map.items():
+    TAG_RELEVANCE_THRESHOLD = 80
+
+    clean_tags = []
+    if 'tags' in manga and manga['tags']:
+        for tag in manga['tags']:
+            # We only keep tags with a rank above the threshold
+            if tag.get('rank') and tag['rank'] >= TAG_RELEVANCE_THRESHOLD:
+                clean_tags.append(tag['name'])
+
     if manga_id not in non_root_ids:
+        clean_desc = clean_description(manga.get('description'))
         # We only keep the fields useful for what follows
         clean_data = {
             'title': manga['title']['romaji'],
-            'description': manga['description'],
+            'title_english': manga['title']['english'],
+            'description': clean_desc,
             'genres': manga['genres'],
-            'tags': [tag['name'] for tag in manga['tags']],
+            'tags': clean_tags,
             'popularity': manga['popularity']
         }
         clean_root_mangas.append(clean_data)

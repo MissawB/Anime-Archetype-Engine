@@ -6,88 +6,83 @@ from sklearn.metrics.pairwise import cosine_similarity
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-
 # --- 1. CONFIGURATION ---
+load_dotenv()
 API_KEY_GEMINI = os.getenv("GEMINI_API_KEY")
 SIMILARITY_THRESHOLD = 0.65
-genai.configure(api_key=API_KEY_GEMINI)
-# Use a stable model
-ai_model = genai.GenerativeModel('gemini-2.5-flash')
-print("🤖 Creative Brain (Gemini AI) initialized.")
 
-# --- 2. MODE & LANGUAGE SELECTION ---
-while True:
-    mode = input("Analyze [A]nime or [M]anga? ").strip().upper()
-    if mode == 'A':
-        MEDIA_TYPE_STR = "Anime"
-        VECTORS_PATH = 'data/artifacts/anime_vectors.npy'
-        LOOKUP_PATH = 'data/artifacts/anime_data_for_lookup.json'
-        DB_PATH = 'data/processed/clean_root_animes.json'
-        break
-    elif mode == 'M':
-        MEDIA_TYPE_STR = "Manga"
-        VECTORS_PATH = 'data/artifacts/manga_vectors.npy'
-        LOOKUP_PATH = 'data/artifacts/manga_data_for_lookup.json'
-        DB_PATH = 'data/processed/clean_root_mangas.json'
-        break
-    else:
-        print("Invalid input. Please enter 'A' or 'M'.")
+def initialize_ai():
+    """Initializes and configures the Gemini AI model."""
+    try:
+        genai.configure(api_key=API_KEY_GEMINI)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        print("🤖 Creative Brain (Gemini AI) initialized.")
+        return model
+    except Exception as e:
+        print(f"❌ Error during Gemini API configuration: {e}")
+        print("Check your API key or internet connection.")
+        exit()
 
-# NEW: Language Selection
-while True:
-    output_language = input("Choose the output language (e.g., English, French, Spanish): ").strip()
-    if output_language:  # Simple validation to ensure it's not empty
-        break
-    else:
-        print("Please enter a language.")
+def get_user_choices():
+    """Gets media type and language choices from the user."""
+    while True:
+        mode = input("Analyze [A]nime or [M]anga? ").strip().upper()
+        if mode == 'A':
+            media_type = "Anime"
+            paths = {
+                "vectors": 'data/artifacts/anime_vectors.npy',
+                "lookup": 'data/artifacts/anime_data_for_lookup.json',
+                "db": 'data/processed/clean_root_animes.json'
+            }
+            break
+        elif mode == 'M':
+            media_type = "Manga"
+            paths = {
+                "vectors": 'data/artifacts/manga_vectors.npy',
+                "lookup": 'data/artifacts/manga_data_for_lookup.json',
+                "db": 'data/processed/clean_root_mangas.json'
+            }
+            break
+        else:
+            print("Invalid input. Please enter 'A' or 'M'.")
 
+    while True:
+        language = input("Choose the output language (e.g., English, French, Spanish): ").strip()
+        if language:
+            break
+        else:
+            print("Please enter a language.")
+            
+    return media_type, paths, language
 
-print(f"🧠 Loading the Analyst Brain ({MEDIA_TYPE_STR})...")
+def load_data(paths, media_type):
+    """Loads all necessary data from files."""
+    print(f"🧠 Loading the Analyst Brain ({media_type})...")
+    try:
+        vectors = np.load(paths["vectors"])
+        with open(paths["lookup"], 'r', encoding='utf-8') as f:
+            lookup_data = json.load(f)
+        with open(paths["db"], 'r', encoding='utf-8') as f:
+            full_db = json.load(f)
+        print("✅ Data loaded.")
+        return vectors, lookup_data, full_db
+    except FileNotFoundError as e:
+        print(f"❌ ERROR: Missing file: {e.filename}")
+        print(f"Make sure you have run the preparation scripts for {media_type}s.")
+        exit()
 
-# --- 3. DYNAMIC DATA LOADING ---
-try:
-    all_vectors = np.load(VECTORS_PATH)
-    with open(LOOKUP_PATH, 'r', encoding='utf-8') as f:
-        all_media_data_lookup = json.load(f)
-    with open(DB_PATH, 'r', encoding='utf-8') as f:
-        clean_media_db = json.load(f)
-    print("✅ Data loaded.")
-except FileNotFoundError as e:
-    print(f"❌ ERROR: Missing file: {e.filename}")
-    print(f"Make sure you have run the preparation scripts for {MEDIA_TYPE_STR}s.")
-    exit()
-
-# --- 4. DATA PREPARATION ---
-all_titles = [item['title'] for item in all_media_data_lookup]
-all_weights = [item['popularity'] for item in all_media_data_lookup]
-title_to_index = {title: i for i, title in enumerate(all_titles)}
-title_to_full_data = {item['title']: item for item in clean_media_db}
-
-print("🚀 Application ready. Starting pair search...")
-
-
-# --- 5. FUNCTIONS (Prompt Updated) ---
-
-def get_similarity_score(title_A, title_B):
-    # This function is unchanged
-    idx_A = title_to_index[title_A]
-    idx_B = title_to_index[title_B]
-    vector_A = all_vectors[idx_A].reshape(1, -1)
-    vector_B = all_vectors[idx_B].reshape(1, -1)
+def get_similarity_score(idx_A, idx_B, vectors):
+    """Calculates the cosine similarity score between two vectors."""
+    vector_A = vectors[idx_A].reshape(1, -1)
+    vector_B = vectors[idx_B].reshape(1, -1)
     score = cosine_similarity(vector_A, vector_B)
     return score[0][0]
 
-
-def generate_scenario(item_A, item_B, media_type, language):  # Added language
-    """
-    Builds the prompt and calls the Gemini API to generate
-    the ARCHETYPAL SCENARIO.
-    """
+def generate_scenario(item_A, item_B, media_type, language, ai_model):
+    """Builds the prompt and calls the Gemini API to generate the archetypal scenario."""
     tags_A = ", ".join(item_A.get('tags', []))
     tags_B = ", ".join(item_B.get('tags', []))
 
-    # The prompt is now dynamic!
     prompt = f"""
     [SYSTEM ROLE]
     You are a "Story Archetypist". Your mission is to analyze the two following synopses and extract their common archetypal plot.
@@ -103,11 +98,10 @@ def generate_scenario(item_A, item_B, media_type, language):  # Added language
     Description: {item_B['description']}
 
     [YOUR MISSION]
-    Write a single synopsis (about 100 words) that describes this fundamental plot, universal enough to describe each of the two {media_type}s individually.
+    Write a single synopsis (about 150 words) that describes this fundamental plot, universal enough to describe each of the two {media_type}s individually.
     Do NOT use ANY character names or specific concepts unique to either work.
     IMPORTANT: Write the final synopsis in {language}.
     """
-
     try:
         safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -118,39 +112,49 @@ def generate_scenario(item_A, item_B, media_type, language):  # Added language
         response = ai_model.generate_content(prompt, safety_settings=safety_settings)
         return response.text
     except Exception as e:
-        try:
-            feedback = e.response.prompt_feedback
-            return f"ERROR: Generation was blocked. Reason: {feedback}"
-        except AttributeError:
-            return f"ERROR: Problem during the call to the AI: {e}"
+        return f"ERROR: AI call failed: {e}"
 
+def main():
+    """Main function to run the application."""
+    ai_model = initialize_ai()
+    media_type, paths, output_language = get_user_choices()
+    all_vectors, lookup_data, full_db = load_data(paths, media_type)
 
-# --- 6. MAIN LOOP (Call Updated) ---
-while True:
-    pair = random.choices(all_titles, weights=all_weights, k=2)
-    item_A_title = pair[0]
-    item_B_title = pair[1]
+    # Prepare data for fast lookups
+    all_titles = [item['title'] for item in lookup_data]
+    all_weights = [item['popularity'] for item in lookup_data]
+    title_to_index = {title: i for i, title in enumerate(all_titles)}
+    title_to_full_data = {item['title']: item for item in full_db}
 
-    if item_A_title == item_B_title:
-        continue
+    print("🚀 Application ready. Starting pair search...")
 
-    score = get_similarity_score(item_A_title, item_B_title)
+    while True:
+        item_A_title, item_B_title = random.choices(all_titles, weights=all_weights, k=2)
 
-    if score >= SIMILARITY_THRESHOLD:
-        print(f"\n--- COMPATIBILITY FOUND! (Score: {score:.2f}) ---")
-        print(f"   {MEDIA_TYPE_STR} A: {item_A_title}")
-        print(f"   {MEDIA_TYPE_STR} B: {item_B_title}")
+        if item_A_title == item_B_title:
+            continue
 
-        item_A_data = title_to_full_data[item_A_title]
-        item_B_data = title_to_full_data[item_B_title]
+        idx_A = title_to_index[item_A_title]
+        idx_B = title_to_index[item_B_title]
+        
+        score = get_similarity_score(idx_A, idx_B, all_vectors)
 
-        print(f"\n🤖 Generating archetypal scenario in {output_language}...")
+        if score >= SIMILARITY_THRESHOLD:
+            print(f"\n--- COMPATIBILITY FOUND! (Score: {score:.2f}) ---")
+            print(f"   {media_type} A: {item_A_title}")
+            print(f"   {media_type} B: {item_B_title}")
 
-        # Pass the media type and language to the function!
-        new_scenario = generate_scenario(item_A_data, item_B_data, MEDIA_TYPE_STR, output_language)
+            item_A_data = title_to_full_data[item_A_title]
+            item_B_data = title_to_full_data[item_B_title]
 
-        print(f"\n--- 🎬 ARCHETYPAL SCENARIO ({MEDIA_TYPE_STR} in {output_language}) ---")
-        print(new_scenario)
-        print("-----------------------------------")
+            print(f"\n🤖 Generating archetypal scenario in {output_language}...")
+            
+            new_scenario = generate_scenario(item_A_data, item_B_data, media_type, output_language, ai_model)
 
-        break
+            print(f"\n--- 🎬 ARCHETYPAL SCENARIO ({media_type} in {output_language}) ---")
+            print(new_scenario)
+            print("-----------------------------------")
+            break
+
+if __name__ == "__main__":
+    main()

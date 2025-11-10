@@ -28,13 +28,14 @@ for manga in clean_mangas_db:
     description = manga['description']
 
     # Amplified version (recommended)
-    super_text = f"Themes: {tags}. {tags}. {tags}. Genres: {genres}. {genres}. Plot: {description}"
+    super_text = f"Themes: {tags}. {tags}. {tags}. {tags}. {tags}. Genres: {genres}.{genres}.{genres}. {genres}. Plot: {description}"
     corpus.append(super_text)
 
     # 2. Preparation of the data list for Phase 3
     # We save the title and popularity in the SAME ORDER
     data_for_lookup.append({
         "title": title,
+        "title_english": manga.get('title_english',""),
         "popularity": manga.get('popularity', 0)  # Put 0 if popularity is missing
     })
 
