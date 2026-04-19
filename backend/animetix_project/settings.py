@@ -34,6 +34,21 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
+# --- CONFIGURATION HUGGING FACE SPACES (v90) ---
+# Autorise Hugging Face à afficher le site dans son interface (Iframe)
+X_FRAME_OPTIONS = 'ALLOWALL' 
+
+# Liste les domaines autorisés pour les formulaires (CSRF)
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.hf.space",
+    "https://*.huggingface.co"
+]
+
+# Indique à Django qu'il est derrière un proxy HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+# -----------------------------------------------
+
 
 # Application definition
 INSTALLED_APPS = [

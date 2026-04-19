@@ -67,6 +67,14 @@ async def generate_text(req: GenerateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/")
+def read_root():
+    return {
+        "message": "Animetix Brain API is running",
+        "endpoints": ["/health", "/similarity", "/generate"],
+        "status": "online"
+    }
+
 @app.get("/health")
 def health():
     return {"status": "online", "llm": "Llama-3.2-3B-Instruct via HF API"}
