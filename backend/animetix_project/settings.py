@@ -41,8 +41,15 @@ X_FRAME_OPTIONS = 'ALLOWALL'
 # Liste les domaines autorisés pour les formulaires (CSRF)
 CSRF_TRUSTED_ORIGINS = [
     "https://*.hf.space",
-    "https://*.huggingface.co"
+    "https://*.huggingface.co",
+    "https://missawb-animetix-web.hf.space" # Ajout explicite
 ]
+
+# Réglages des cookies pour la production (Hugging Face est en HTTPS)
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = 'None'
 
 # Indique à Django qu'il est derrière un proxy HTTPS
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
