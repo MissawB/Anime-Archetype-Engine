@@ -4,9 +4,17 @@ __pycache__
 db.sqlite3
 .git
 .idea
-data/raw/*
-data/processed/*
-data/models/*
-data/artifacts/*
 .env
 node_modules
+
+# Dossiers de données
+data/raw/
+data/models/
+
+# On ignore les vecteurs lourds
+data/artifacts/*.npy
+
+# IMPORTANT : On ne veut PAS ignorer les JSON en production
+# (Les lignes suivantes annulent l'ignorance pour les JSON)
+!data/artifacts/*.json
+!data/processed/*.json
