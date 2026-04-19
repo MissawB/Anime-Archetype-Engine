@@ -35,7 +35,16 @@ class AnimetixService:
         if media_type in self.data:
             return self.data[media_type]
                 
-        base_path = settings.BASE_DIR.parent
+        # --- v91 FIX : Détection robuste du chemin data ---
+        # On part du dossier de ce fichier : backend/animetix/services.py
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        # On remonte de 2 niveaux pour arriver à la racine (Double_scenario_Project/)
+        project_root = os.path.dirname(os.path.dirname(current_file_dir))
+        
+        # Log de debug pour vérifier où on cherche
+        print(f"🔍 Searching data in root: {project_root}")
+        
+        base_path = project_root
         data_configs = {
             'Anime': {
                 "thematic": 'data/artifacts/anime_thematic_vectors.npy',
