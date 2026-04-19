@@ -23,39 +23,35 @@ jobs:
       - name: Install huggingface_hub
         run: pip install huggingface_hub
 
-      # On utilise un script Python pour uploader car c'est la méthode la plus stable
-      - name: Upload to Animetix Web
+      - name: Deploy to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python -c "
-          from huggingface_hub import HfApi
+          from huggingface_hub import HfApi, create_repo
           import os
+          
           api = HfApi()
-          # Upload du Visage (Django)
-          api.upload_folder(
-              folder_path='.',
-              repo_id='MissawB/animetix-web',
-              repo_type='space',
-              token=os.environ['HF_TOKEN'],
-              ignore_patterns=['data/artifacts/*.npy', 'data/models/*', '.venv/*', '.env', 'data/raw/*']
-          )
-          "
+          token = os.environ['HF_TOKEN']
+          
+          def sync_space(repo_id, ignore):
+              print(f'🚀 Syncing {repo_id}...')
+              # Crée le repo si absent
+              create_repo(repo_id, token=token, repo_type='space', space_sdk='docker', exist_ok=True)
+              
+              # Upload
+              api.upload_folder(
+                  folder_path='.',
+                  repo_id=repo_id,
+                  repo_type='space',
+                  token=token,
+                  ignore_patterns=ignore
+              )
+              print(f'✅ {repo_id} synced!')
 
-      - name: Upload to Animetix Brain
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python -c "
-          from huggingface_hub import HfApi
-          import os
-          api = HfApi()
-          # Upload du Cerveau (FastAPI)
-          api.upload_folder(
-              folder_path='.',
-              repo_id='MissawB/animetix-brain',
-              repo_type='space',
-              token=os.environ['HF_TOKEN'],
-              ignore_patterns=['.venv/*', '.env', 'backend/*', 'data/raw/*']
-          )
+          # 1. Sync WEB (Django)
+          sync_space('MissawB/animetix-web', ['.venv/*', '.env', 'data/artifacts/*.npy', 'data/models/*', 'data/raw/*', 'brain.py'])
+          
+          # 2. Sync BRAIN (FastAPI)
+          sync_space('MissawB/animetix-brain', ['.venv/*', '.env', 'backend/*', 'data/raw/*', 'data/processed/*', '.github/*'])
           "
