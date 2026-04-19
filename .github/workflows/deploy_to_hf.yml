@@ -15,17 +15,18 @@ jobs:
           fetch-depth: 0
           lfs: true
       
-      # Déploiement du Visage (Django)
+      - name: Install Hugging Face Hub
+        run: pip install huggingface_hub
+
+      # Cette étape configure Git pour utiliser votre token proprement
+      - name: Authenticate with Hugging Face
+        run: |
+          huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
+
       - name: Push Web Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Utilisation de oauth2 comme nom d'utilisateur pour valider le token
-          git push --force https://oauth2:$HF_TOKEN@huggingface.co/spaces/MissawB/animetix-web HEAD:main
+          git push --force https://huggingface.co/spaces/MissawB/animetix-web HEAD:main
           
-      # Déploiement du Cerveau (FastAPI)
       - name: Push Brain Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push --force https://oauth2:$HF_TOKEN@huggingface.co/spaces/MissawB/animetix-brain HEAD:main
+          git push --force https://huggingface.co/spaces/MissawB/animetix-brain HEAD:main
