@@ -126,6 +126,9 @@ jobs:
           \"\"\"
 
           # --- EXÉCUTION ---
-          deploy_space('MissawB/animetix-web', web_docker, web_readme, ['.venv/*', '.env', 'data/artifacts/*.npy', 'data/models/*', 'data/raw/*', 'brain.py'])
+          # WEB : On ignore les vecteurs NPY mais on GARDE les JSON
+          deploy_space('MissawB/animetix-web', web_docker, web_readme, ['.venv/*', '.env', 'data/artifacts/*.npy', 'data/models/*', 'data/raw/*', 'brain.py', 'pipeline/*'])
+          
+          # BRAIN : On prend tout ce qui est dans artifacts (JSON + NPY)
           deploy_space('MissawB/animetix-brain', brain_docker, brain_readme, ['.venv/*', '.env', 'backend/*', 'data/raw/*', 'data/processed/*', '.github/*'])
           "

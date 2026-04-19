@@ -64,10 +64,17 @@ class AnimetixService:
         if not config: return None
 
         try:
-            # On charge toujours les JSON (nécessaires pour les titres et images)
+            lookup_path = os.path.join(base_path, config["lookup"])
+            db_path = os.path.join(base_path, config["db"])
+            
+            if not os.path.exists(lookup_path):
+                print(f"❌ Missing lookup file: {lookup_path}")
+            if not os.path.exists(db_path):
+                print(f"❌ Missing DB file: {db_path}")
+
             self.data[media_type] = {
-                "lookup": json.load(open(os.path.join(base_path, config["lookup"]), encoding='utf-8')),
-                "db": json.load(open(os.path.join(base_path, config["db"]), encoding='utf-8')),
+                "lookup": json.load(open(lookup_path, encoding='utf-8')),
+                "db": json.load(open(db_path, encoding='utf-8')),
             }
             
             # OPTIMISATION HYBRIDE : On ne charge les vecteurs QUE si on n'utilise pas l'API Brain
