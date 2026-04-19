@@ -87,97 +87,69 @@ class AnimetixService:
         except Exception as e:
             print(f"Error loading {media_type} data: {e}"); return None
 
-# --- 2. LANGCHAIN SERVICE (Hybrid Resilience) ---
+# --- 2. LANGCHAIN SERVICE (Micro-service Client) ---
 class LangChainService:
-    _llm_instance = None
-    _model_type = "gemini" 
-
     def __init__(self):
-        if LangChainService._llm_instance is None:
-            try:
-                print(f"🚀 Initialisation de Llama 3.2 via Ollama...")
-                LangChainService._llm_instance = ChatOllama(model="llama3.2:3b", temperature=0.7)
-                LangChainService._llm_instance.invoke("test")
-                LangChainService._model_type = "llama"
-                print("✅ Llama 3.2 Loaded.")
-            except Exception as e:
-                print(f"⚠️ Ollama failed: {e}. Falling back to Gemini API.")
-                LangChainService._llm_instance = ChatGoogleGenerativeAI(
-                    model="gemini-2.5-flash",
-                    google_api_key=os.getenv("GEMINI_API_KEY")
-                )
-                LangChainService._model_type = "gemini"
-        self.llm = LangChainService._llm_instance
+        self.brain_url = os.getenv("BRAIN_API_URL")
 
-    def _get_icon(self):
-        return "🦙" if LangChainService._model_type == "llama" else "✨"
-
-    def _fix_nested_json(self, data):
-        if not isinstance(data, dict): return data
-        if "properties" in data: data = data["properties"]
-        for key in ["reasoning", "scenario", "explanation"]:
-            if key in data and isinstance(data[key], list):
-                data[key] = " ".join([str(item) for item in data[key]])
-        return data
-
-    def generate_scenario_advanced(self, media_type, item_A, item_B, language, player_history="Aucun"):
-        parser = JsonOutputParser(pydantic_object=ScenarioOutput)
-        icon = self._get_icon()
-        
-        if media_type == 'Character':
-            task = f"Crée une rencontre ou une fusion entre ces deux personnages (Traits, Rôles, Capacités)"
-            label_A = f"Perso 1: {item_A['title']} ({item_A.get('origin', 'Inconnu')})"
-            label_B = f"Perso 2: {item_B['title']} ({item_B.get('origin', 'Inconnu')})"
-            context_A = item_A.get('description', '')
-            context_B = item_B.get('description', '')
-        else:
-            task = "Fusionne ces deux univers (Thèmes, Lore, Ambiance)"
-            label_A = f"Œuvre A: {item_A['title']}"
-            label_B = f"Œuvre B: {item_B['title']}"
-            context_A = f"{item_A.get('description', '')} (Avis: {' '.join(item_A.get('reviews', []))})"
-            context_B = f"{item_B.get('description', '')} (Avis: {' '.join(item_B.get('reviews', []))})"
-
-        prompt = ChatPromptTemplate.from_template("""
-        Tu es un expert Concept Creator spécialisé en {media_type}. 
-        MISSION : {task}.
-        
-        1. {label_A} : {context_A}
-        2. {label_B} : {context_B}
-        
-        CONSIGNES DE RÉPONSE (Format JSON STRICT) :
-        - "reasoning" : Liste UNIQUEMENT les 2 points techniques précis de la fusion (ex: "Pouvoirs psy + École militaire"). Ajoute l'icône {icon} à la fin.
-        - "scenario" : Rédige le synopsis en {language}. INTERDICTION de citer les noms/titres. Sois évocateur.
-        
-        Réponds UNIQUEMENT avec l'objet JSON.
-        {{
-            "reasoning": "...",
-            "scenario": "..."
-        }}
-        """)
-        
-        chain = prompt | self.llm | parser
+    def _generate_via_brain(self, prompt, system_prompt="You are a helpful assistant."):
+        """Appelle Llama 3.2 via l'API Brain."""
+        if not self.brain_url:
+            return None
         try:
-            return self._fix_nested_json(chain.invoke({
-                "media_type": media_type, "task": task,
-                "label_A": label_A, "context_A": context_A[:1200],
-                "label_B": label_B, "context_B": context_B[:1200],
-                "language": language, "icon": icon
-            }))
+            response = requests.post(f"{self.brain_url}/generate", json={
+                "prompt": prompt,
+                "system_prompt": system_prompt
+            }, timeout=30)
+            if response.status_code == 200:
+                return response.json()["text"]
         except Exception as e:
-            print(f"LLM Error: {e}")
-            return {"reasoning": f"Échec IA {icon}", "scenario": "L'IA a fait une erreur. Réessayez."}
+            print(f"Brain LLM Error: {e}")
+        return None
+
+    def generate_scenario_advanced(self, media_type, item_A, item_B, language):
+        icon = "🦙" # Llama est maintenant le standard
+        
+        # Préparation du contexte (identique au précédent)
+        if media_type == 'Character':
+            label_A, label_B = item_A['title'], item_B['title']
+            context_A, context_B = item_A.get('description', ''), item_B.get('description', '')
+        else:
+            label_A, label_B = item_A['title'], item_B['title']
+            context_A = f"{item_A.get('description', '')}"
+            context_B = f"{item_B.get('description', '')}"
+
+        system_prompt = f"Tu es un expert Concept Creator spécialisé en {media_type}. Réponds UNIQUEMENT en JSON."
+        user_prompt = f"""
+        MISSION : Fusionne ces deux entités :
+        1. {label_A} : {context_A[:800]}
+        2. {label_B} : {context_B[:800]}
+        
+        Format JSON STRICT :
+        {{
+            "reasoning": "2 points techniques + {icon}",
+            "scenario": "Synopsis en {language} (sans citer les noms)."
+        }}
+        """
+        
+        res_text = self._generate_via_brain(user_prompt, system_prompt)
+        if res_text:
+            try:
+                # On tente de parser le JSON renvoyé par Llama
+                import json
+                # Nettoyage si Llama ajoute du texte autour du JSON
+                json_match = re.search(r'\{.*\}', res_text, re.DOTALL)
+                if json_match:
+                    return json.loads(json_match.group(0))
+            except: pass
+            return {"reasoning": f"Llama 3.2 {icon}", "scenario": res_text}
+            
+        return {"reasoning": "Fallback", "scenario": "L'IA est indisponible."}
 
     def generate_undercover_clue(self, media_type, item_A, item_B, language):
-        icon = self._get_icon()
-        if media_type == 'Character':
-            prompt_text = f"Donne un seul mot-clé thématique (trait, rôle, élément visuel) commun à ces deux personnages : '{item_A}' et '{item_B}'. Ne cite aucun nom."
-        else:
-            prompt_text = f"Donne un seul mot-clé thématique commun à ces deux œuvres : '{item_A}' et '{item_B}'. Ne cite aucun titre."
-            
-        try: 
-            res = self.llm.invoke(prompt_text)
-            return res.content if hasattr(res, 'content') else str(res)
-        except: return "Mystère..."
+        prompt = f"Donne un seul mot-clé thématique commun à ces deux {media_type} : '{item_A}' et '{item_B}'. Ne cite aucun nom."
+        res = self._generate_via_brain(prompt)
+        return res if res else "Mystère..."
 
     def explain_undercover(self, maj_titles, maj_tags, intruder_title, intruder_tags, language):
         parser = JsonOutputParser(pydantic_object=ExplanationOutput)
