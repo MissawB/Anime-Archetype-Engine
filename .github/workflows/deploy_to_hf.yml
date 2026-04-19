@@ -15,15 +15,47 @@ jobs:
           fetch-depth: 0
           lfs: true
       
-      # Configuration simplifiée avec la nouvelle commande 'hf'
-      - name: Authenticate with Hugging Face
-        run: |
-          hf login --token ${{ secrets.HF_TOKEN }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-      - name: Push Web Space
+      - name: Install huggingface_hub
+        run: pip install huggingface_hub
+
+      # On utilise un script Python pour uploader car c'est la méthode la plus stable
+      - name: Upload to Animetix Web
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push --force https://huggingface.co/spaces/MissawB/animetix-web HEAD:main
-          
-      - name: Push Brain Space
+          python -c "
+          from huggingface_hub import HfApi
+          import os
+          api = HfApi()
+          # Upload du Visage (Django)
+          api.upload_folder(
+              folder_path='.',
+              repo_id='MissawB/animetix-web',
+              repo_type='space',
+              token=os.environ['HF_TOKEN'],
+              ignore_patterns=['data/artifacts/*.npy', 'data/models/*', '.venv/*', '.env', 'data/raw/*']
+          )
+          "
+
+      - name: Upload to Animetix Brain
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push --force https://huggingface.co/spaces/MissawB/animetix-brain HEAD:main
+          python -c "
+          from huggingface_hub import HfApi
+          import os
+          api = HfApi()
+          # Upload du Cerveau (FastAPI)
+          api.upload_folder(
+              folder_path='.',
+              repo_id='MissawB/animetix-brain',
+              repo_type='space',
+              token=os.environ['HF_TOKEN'],
+              ignore_patterns=['.venv/*', '.env', 'backend/*', 'data/raw/*']
+          )
+          "
