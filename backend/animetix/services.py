@@ -76,10 +76,19 @@ class AnimetixService:
             lookup_path = os.path.join(base_path, config["lookup"])
             db_path = os.path.join(base_path, config["db"])
             
-            if not os.path.exists(lookup_path):
-                print(f"❌ Missing lookup file: {lookup_path}")
-            if not os.path.exists(db_path):
-                print(f"❌ Missing DB file: {db_path}")
+            if not os.path.exists(lookup_path) or not os.path.exists(db_path):
+                print(f"❌ Missing files in {base_path}/data/...")
+                # DIAGNOSTIC : On liste ce que Django voit réellement
+                try:
+                    import glob
+                    print(f"📂 Contenu de {base_path}: {os.listdir(base_path)}")
+                    if os.path.exists(os.path.join(base_path, 'data')):
+                        print(f"📂 Contenu de {base_path}/data: {os.listdir(os.path.join(base_path, 'data'))}")
+                        for sub in ['artifacts', 'processed']:
+                            p = os.path.join(base_path, 'data', sub)
+                            if os.path.exists(p):
+                                print(f"📂 Contenu de {p}: {os.listdir(p)}")
+                except: pass
 
             self.data[media_type] = {
                 "lookup": json.load(open(lookup_path, encoding='utf-8')),
