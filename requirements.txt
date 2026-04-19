@@ -17,3 +17,5 @@ requests
 python-dotenv
 sentence-transformers
 datasets
+dagster
+dagster-webserver

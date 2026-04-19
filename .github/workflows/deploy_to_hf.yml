@@ -1,0 +1,31 @@
+name: Sync to Hugging Face
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # On cible l'environnement GitHub que vous avez créé
+    environment: HF
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true
+      
+      # Déploiement du Visage (Django)
+      - name: Push Web Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git push --force https://MissawB:$HF_TOKEN@huggingface.co/spaces/MissawB/animetix-web main
+          
+      # Déploiement du Cerveau (FastAPI)
+      - name: Push Brain Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git push --force https://MissawB:$HF_TOKEN@huggingface.co/spaces/MissawB/animetix-brain main

@@ -4,51 +4,57 @@ import os
 import json
 from sklearn.metrics.pairwise import cosine_similarity
 from pydantic import BaseModel
-from typing import List
+from functools import lru_cache
 
 app = FastAPI(title="Animetix Brain API")
 
-# Chargement des données (On profite des 16 Go de RAM de HF)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data", "artifacts")
 
-vectors = {}
-lookup = {}
+# Stockage des vecteurs en RAM (HF offre 16 Go)
+brain_data = {}
 
 def load_brain():
-    global vectors, lookup
-    modes = ['anime', 'manga', 'char']
-    for mode in modes:
-        try:
-            # Sur HF, on peut charger en RAM direct pour une vitesse maximale
-            vectors[f"{mode}_thematic"] = np.load(os.path.join(DATA_PATH, f"{mode}_thematic_vectors.npy" if mode != 'char' else "char_vectors.npy"))
-            lookup[mode] = json.load(open(os.path.join(DATA_PATH, f"{mode}_data_for_lookup.json"), encoding='utf-8'))
-            print(f"✅ {mode} loaded in Brain.")
-        except Exception as e:
-            print(f"❌ Error loading {mode}: {e}")
+    global brain_data
+    configs = {
+        'anime': 'anime_thematic_vectors.npy',
+        'manga': 'manga_thematic_vectors.npy',
+        'char': 'char_vectors.npy'
+    }
+    for mode, filename in configs.items():
+        path = os.path.join(DATA_PATH, filename)
+        if os.path.exists(path):
+            brain_data[mode] = np.load(path)
+            print(f"✅ Brain: {mode} vectors loaded ({len(brain_data[mode])} entities)")
+        else:
+            print(f"⚠️ Brain: {path} not found.")
 
 @app.on_event("startup")
 async def startup_event():
     load_brain()
 
 class SimilarityRequest(BaseModel):
-    mode: str  # 'anime', 'manga', 'char'
+    mode: str
     secret_idx: int
     guess_idx: int
 
 @app.post("/similarity")
 async def get_similarity(req: SimilarityRequest):
-    mode = req.mode
-    if f"{mode}_thematic" not in vectors:
-        raise HTTPException(status_code=404, detail="Mode not loaded")
+    mode = req.mode.lower()[:4]
+    if mode not in brain_data:
+        raise HTTPException(status_code=404, detail=f"Mode {mode} not loaded in brain")
     
-    v = vectors[f"{mode}_thematic"]
-    s_vec = v[req.secret_idx].reshape(1, -1)
-    g_vec = v[req.guess_idx].reshape(1, -1)
-    
-    sim = float(cosine_similarity(s_vec, g_vec)[0][0])
-    return {"similarity": sim}
+    try:
+        vecs = brain_data[mode]
+        s_vec = vecs[req.secret_idx].reshape(1, -1)
+        g_vec = vecs[req.guess_idx].reshape(1, -1)
+        sim = float(cosine_similarity(s_vec, g_vec)[0][0])
+        return {"similarity": sim}
+    except IndexError:
+        raise HTTPException(status_code=400, detail="Index out of range")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 def health():
-    return {"status": "alive"}
+    return {"status": "online", "loaded_modes": list(brain_data.keys())}

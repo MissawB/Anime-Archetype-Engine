@@ -224,10 +224,9 @@ def make_guess(request):
             
             raw_sim = (0.6 * vec_sim) + (0.15 * org_sim) + (0.15 * link_sim) + (0.1 * height_sim)
         else:
-            raw_sim = vec_sim # Pour Anime/Manga, on reste sur du pur sémantique (vibe)
-        else:
-            sim_thematic = float(cosine_similarity(data['vectors_thematic'][secret_idx].reshape(1, -1), data['vectors_thematic'][guess_idx].reshape(1, -1))[0][0])
-            sim_plot = float(cosine_similarity(data['vectors_plot'][secret_idx].reshape(1, -1), data['vectors_plot'][guess_idx].reshape(1, -1))[0][0])
+            # Logique Anime/Manga avec Recommandations
+            sim_thematic = vec_sim
+            sim_plot = float(cosine_similarity(data['vectors_plot'][secret_idx].reshape(1, -1), data['vectors_plot'][guess_idx].reshape(1, -1))[0][0]) if 'vectors_plot' in data else vec_sim
             
             rec_rating = 0
             if guess_title in secret_full.get('recommendations', {}):

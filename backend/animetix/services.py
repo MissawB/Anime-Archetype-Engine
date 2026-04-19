@@ -64,20 +64,24 @@ class AnimetixService:
         if not config: return None
 
         try:
-            # OPTIMISATION RAM : mmap_mode='r' lit sur le disque au lieu de charger en RAM
+            # On charge toujours les JSON (nécessaires pour les titres et images)
             self.data[media_type] = {
-                "vectors_thematic": np.load(os.path.join(base_path, config["thematic"]), mmap_mode='r'),
-                "vectors_plot": np.load(os.path.join(base_path, config["plot"]), mmap_mode='r'),
-                "vectors_vibe": np.load(os.path.join(base_path, config["vibe"]), mmap_mode='r'),
                 "lookup": json.load(open(os.path.join(base_path, config["lookup"]), encoding='utf-8')),
                 "db": json.load(open(os.path.join(base_path, config["db"]), encoding='utf-8')),
             }
+            
+            # OPTIMISATION HYBRIDE : On ne charge les vecteurs QUE si on n'utilise pas l'API Brain
+            if not os.getenv("BRAIN_API_URL"):
+                print(f"🧠 Loading vectors locally for {media_type}...")
+                self.data[media_type]["vectors_thematic"] = np.load(os.path.join(base_path, config["thematic"]), mmap_mode='r')
+                self.data[media_type]["vectors_plot"] = np.load(os.path.join(base_path, config["plot"]), mmap_mode='r')
+                self.data[media_type]["vectors_vibe"] = np.load(os.path.join(base_path, config["vibe"]), mmap_mode='r')
+            else:
+                print(f"🌐 Using Remote Brain for {media_type} vectors.")
+
             d = self.data[media_type]
             d["titles"] = [item['title'] for item in d["lookup"]]
             d["title_to_index"] = {t: i for i, t in enumerate(d["titles"])}
-            
-            # OPTIMISATION RAM : On ne crée le dictionnaire complet que si nécessaire
-            # ou on utilise une structure plus légère
             d["title_to_full_data"] = {item['title']: item for item in d["db"]}
             return d
         except Exception as e:
