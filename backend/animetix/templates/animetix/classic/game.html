@@ -1,0 +1,227 @@
+{% extends 'animetix/base.html' %}
+{% load custom_filters %}
+
+{% block title %}Animetix - {{ media_type }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2 class="text-center mb-4">Animetix ({{ media_type }} Edition)</h2>
+        <p class="text-center text-muted mb-4">
+            Trouvez {% if media_type == 'Character' %}le personnage secret{% else %}l'œuvre secrète{% endif %} ! 
+            Utilisez vos essais pour débloquer des indices stratégiques.
+        </p>
+
+        {% if game_over %}
+        <div class="alert alert-success text-center py-4 mb-4 shadow">
+            <h1 class="display-4">🎉 RÉVÉLATION !</h1>
+            <p class="lead">{% if media_type == 'Character' %}Le personnage secret était{% else %}L'œuvre secrète était{% endif %} <strong>{{ secret_data.title }}</strong></p>
+            <a href="{% url 'index' %}" class="btn btn-primary btn-lg mt-3">Retour à l'accueil</a>
+        </div>
+
+        <div class="card mb-5 shadow border-0 overflow-hidden" style="border-radius: 25px;">
+            <div class="row g-0">
+                <div class="col-md-4">
+                    {% if secret_data.image %}
+                    <img src="{{ secret_data.image }}" class="img-fluid" alt="{{ secret_data.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% endif %}
+                </div>
+                <div class="col-md-8">
+                    <div class="card-body p-4">
+                        <h5 class="card-title h3">{{ secret_data.title }} 
+                            {% if media_type == 'Character' %}
+                            <small class="text-muted fs-6 d-block">Origine : {{ secret_data.origin }}</small>
+                            {% elif secret_data.year %}
+                            ({{ secret_data.year }})
+                            {% endif %}
+                        </h5>
+                        <p class="card-text">
+                            {% for tag in secret_data.tags|slice:":10" %}
+                            <span class="badge bg-secondary opacity-75">{{ tag }}</span>
+                            {% endfor %}
+                        </p>
+                        <hr>
+                        <p class="card-text" style="text-align: justify;">{{ secret_data.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        
+        <!-- DASHBOARD DES INDICES -->
+        <div class="card p-4 mb-4 shadow-sm border-0 bg-white" style="border-radius: 20px;">
+            <h5 class="mb-3">💡 Tableau des Indices :</h5>
+            <div class="row g-2">
+                <!-- Image floutée -->
+                <div class="col-md-6 col-lg-4">
+                    {% if hints.poster.revealed %}
+                        <div class="text-center p-2 border rounded bg-light">
+                            <img src="{{ hints.poster.value }}" class="rounded shadow-sm" style="height: 120px; width: 85px; object-fit: cover; filter: blur(15px);">
+                            <div class="small mt-1 text-muted">{% if media_type == 'Character' %}Portrait Flouté{% else %}Affiche Floutée{% endif %}</div>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'reveal_hint' 'poster' %}" class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center align-items-center py-3">
+                            <span class="fs-3">🖼️</span>
+                            <span class="small">Image (Gratuit)</span>
+                        </a>
+                    {% endif %}
+                </div>
+
+                <!-- Recommandation / Similitude -->
+                <div class="col-md-6 col-lg-4">
+                    {% if hints.rec or hints.sim %}
+                        {% with h=hints.rec|default:hints.sim %}
+                        {% if h.revealed %}
+                            <div class="alert alert-info py-3 mb-0 text-center border-0 shadow-sm h-100 d-flex align-items-center justify-content-center">
+                                <strong>🔗 {{ h.value }}</strong>
+                            </div>
+                        {% else %}
+                            <button onclick="confirmHint('{{ hints.rec|yesno:'rec,sim' }}', '{% if media_type == 'Character' %}Voir un personnage similaire ?{% else %}Voir une œuvre similaire ?{% endif %}')" class="btn btn-outline-primary w-100 h-100 py-3 {% if h.locked %}disabled{% endif %}">
+                                <span class="fs-3">🔗</span>
+                                <span class="small">{% if media_type == 'Character' %}Similaire{% else %}Œuvre Proche{% endif %} (10+)</span>
+                            </button>
+                        {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </div>
+
+                <!-- Personnages OU Origine -->
+                <div class="col-md-6 col-lg-4">
+                    {% if hints.chars or hints.origin %}
+                        {% with h=hints.chars|default:hints.origin %}
+                        {% if h.revealed %}
+                            <div class="alert alert-warning py-3 mb-0 text-center border-0 shadow-sm h-100 d-flex align-items-center justify-content-center">
+                                <strong>{% if media_type == 'Character' %}🏛️ {{ h.value }}{% else %}👥 {{ h.value|join:", " }}{% endif %}</strong>
+                            </div>
+                        {% else %}
+                            <button onclick="confirmHint('{{ hints.chars|yesno:'chars,origin' }}', '{% if media_type == 'Character' %}Révéler l\'œuvre d\'origine ?{% else %}Révéler deux personnages ?{% endif %}')" class="btn btn-outline-warning w-100 h-100 py-3 {% if h.locked %}disabled{% endif %}">
+                                <span class="fs-3">{% if media_type == 'Character' %}🏛️{% else %}👥{% endif %}</span>
+                                <span class="small">{% if media_type == 'Character' %}Origine{% else %}Persos{% endif %} (15+)</span>
+                            </button>
+                        {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </div>
+
+                <!-- Mots Rares -->
+                <div class="col-md-6 col-lg-4">
+                    {% if hints.words %}
+                        {% if hints.words.revealed %}
+                            <div class="alert alert-success py-3 mb-0 text-center border-0 shadow-sm h-100 d-flex align-items-center justify-content-center">
+                                <span class="badge bg-success me-1">{{ hints.words.value.0 }}</span>
+                                <span class="badge bg-success">{{ hints.words.value.1 }}</span>
+                            </div>
+                        {% else %}
+                            <button onclick="confirmHint('words', 'Révéler deux mots-clés de la description ?')" class="btn btn-outline-success w-100 h-100 py-3 {% if hints.words.locked %}disabled{% endif %}">
+                                <span class="fs-3">🔑</span>
+                                <span class="small">Mots-clés (20+)</span>
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <!-- Vibe IA -->
+                <div class="col-md-6 col-lg-4">
+                    {% if hints.vibe %}
+                        {% if hints.vibe.revealed %}
+                            <div class="alert alert-danger py-2 mb-0 small border-0 shadow-sm h-100 d-flex align-items-center">
+                                <em>"{{ hints.vibe.value }}"</em>
+                            </div>
+                        {% else %}
+                            <button onclick="confirmHint('vibe', 'Générer un indice sur l\'ambiance avec l\'IA ?')" class="btn btn-outline-danger w-100 h-100 py-3 {% if hints.vibe.locked %}disabled{% endif %}">
+                                <span class="fs-3">🔮</span>
+                                <span class="small">Vibe IA (25+)</span>
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-5 shadow-sm border-0" style="border-radius: 20px;">
+            <form action="{% url 'make_guess' %}" method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label h5 fw-bold">Votre prochain essai :</label>
+                    <select id="title-search" name="guess" placeholder="Tapez un nom..." autocomplete="off">
+                        <option value=""></option>
+                        {% for item in remaining_items %}
+                        <option value="{{ item.title }}" data-src="{{ item.image }}" data-english="{{ item.title_english }}" data-native="{{ item.title_native }}">
+                            {{ item.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100 shadow">Tenter ma chance !</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <h4 class="mb-3">Historique des essais :</h4>
+        {% if not guesses %}
+        <div class="alert alert-light border text-center">Commencez à deviner pour voir votre progression.</div>
+        {% else %}
+        <div class="list-group shadow-sm mb-5">
+            {% for guess in guesses %}
+            <div class="list-group-item guess-row border-0 mb-3 shadow-sm rounded-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0 fw-bold">{{ guess.title }}</h5>
+                    <div class="text-end">
+                        <span class="badge bg-{{ guess.color }} p-2 fs-6 shadow-sm">{{ guess.temp }}</span>
+                        <span class="ms-2 fw-bold text-muted">{{ guess.score }}%</span>
+                    </div>
+                </div>
+                <div class="progress shadow-sm" style="height: 14px; background-color: #e9ecef; border-radius: 10px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-{{ guess.color }}" 
+                         role="progressbar" 
+                         style="width: {{ guess.score }}%" 
+                         aria-valuenow="{{ guess.score }}" aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="text-center mt-5 mb-5">
+            <hr class="w-25 mx-auto opacity-25">
+            <a href="{% url 'abandon_game' %}" class="btn btn-link text-danger text-decoration-none" onclick="return confirm('Abandonner la partie et voir la réponse ?')">
+                 🏳️ Je donne ma langue au chat (Abandonner)
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function confirmHint(type, message) {
+        if (confirm(message)) {
+            window.location.href = "{% url 'reveal_hint' 'PLACEHOLDER' %}".replace('PLACEHOLDER', type);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        if (document.getElementById('title-search')) {
+            new TomSelect("#title-search", {
+                create: false,
+                valueField: 'value',
+                labelField: 'text',
+                searchField: ['text', 'english', 'native'],
+                maxOptions: 50,
+                render: {
+                    option: function(data, escape) {
+                        return `<div class="d-flex align-items-center py-1">
+                            <div class="me-2" style="width: 40px; height: 55px; flex-shrink: 0;">
+                                <img src="${escape(data.src)}" class="rounded w-100 h-100" style="object-fit: cover;" onerror="this.src='https://via.placeholder.com/40x55?text=?'">
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="fw-bold text-truncate">${escape(data.text)}</div>
+                                <div class="text-muted small text-truncate">${data.english ? escape(data.english) : ''}</div>
+                            </div>
+                        </div>`;
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

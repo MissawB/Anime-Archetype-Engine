@@ -3,24 +3,32 @@ import json
 
 def clean_description(text):
     """
-    Clean the manga description,
+    Clean the manga description by removing HTML tags and useless boilerplate.
     """
     if not text:
-        return ""  # Return empty string if text is None or empty
+        return ""
 
     # 1. Delete HTML tags
     text = re.sub(r'<[^>]+>', ' ', text)
 
-    # 2. Delete the part "(Source:...)"
-    text = text.split('(Source:')[0].strip()
+    # 2. Remove typical boilerplate patterns
+    patterns_to_remove = [
+        r'\(Source:.*?\)',
+        r'\[Written by.*?\]',
+        r'Notes?:.*',
+        r'Official website:.*',
+        r'Originally published.*',
+        r'Serialized in.*',
+        r'Winner of the.*?award.*',
+        r'Nominated for.*',
+    ]
+    for pattern in patterns_to_remove:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
 
-    # 3. Delete the part "Notes:"
-    text = text.split('Notes:')[0].strip()
-
-    # 4. Remove URLs
+    # 3. Remove URLs
     text = re.sub(r'https?://\S+', '', text)
 
-    # 5. Normalize whitespace
+    # 4. Normalize whitespace
     text = re.sub(r'\s+', ' ', text).strip()
 
     return text
@@ -87,10 +95,15 @@ for manga_id, manga in mangas_map.items():
         clean_data = {
             'title': manga['title']['romaji'],
             'title_english': manga['title']['english'],
+            'title_native': manga['title']['native'],
             'description': clean_desc,
             'genres': manga['genres'],
             'tags': clean_tags,
-            'popularity': manga['popularity']
+            'popularity': manga['popularity'],
+            'year': manga['startDate']['year'] if manga['startDate'] else None,
+            'image': manga['coverImage']['large'] if manga['coverImage'] else None,
+            'reviews': [r['summary'] for r in manga['reviews']['nodes']] if manga.get('reviews') else [],
+            'recommendations': {r['mediaRecommendation']['title']['romaji']: r['rating'] for r in manga['recommendations']['nodes'] if r.get('mediaRecommendation')} if manga.get('recommendations') else {}
         }
         clean_root_mangas.append(clean_data)
 

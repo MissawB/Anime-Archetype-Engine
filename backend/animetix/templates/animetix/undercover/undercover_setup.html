@@ -1,0 +1,46 @@
+{% extends 'animetix/base.html' %}
+
+{% block title %}Animetix - Undercover Party Setup{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <h1 class="display-5 mb-4">🕵️ Undercover Party</h1>
+        <p class="lead mb-5">Déduction sociale en local dans l'univers <strong>{{ media_type }}</strong>.</p>
+        
+        <div class="card p-4 shadow-sm">
+            <form action="{% url 'undercover_party_play' %}" method="post">
+                {% csrf_token %}
+                
+                <div class="mb-4 text-start">
+                    <label class="form-label fw-bold">Nombre de joueurs :</label>
+                    <input type="number" name="num_players" class="form-control form-control-lg" min="3" max="12" value="3">
+                    <div class="form-text text-muted">Minimum 3 joueurs requis.</div>
+                </div>
+
+                <div class="mb-4 text-start">
+                    <label class="form-label fw-bold">Difficulté :</label>
+                    <select name="difficulty" class="form-select form-select-lg">
+                        <option value="Easy">Facile (Sujets éloignés)</option>
+                        <option value="Normal" selected>Normal (Sujets proches)</option>
+                        <option value="Hard">Difficile (Sujets quasi-identiques)</option>
+                    </select>
+                    <div class="form-text text-muted">Définit à quel point l'Undercover sera "proche" des Civils.</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 py-3">
+                    Lancer la Soirée
+                </button>
+            </form>
+        </div>
+        
+        <div class="mt-4 alert alert-light border">
+            <h5>Règles :</h5>
+            <small class="text-muted">
+                Tout le monde reçoit le même mot, sauf un joueur (l'Undercover) qui reçoit une œuvre thématiquement proche. 
+                Donnez des indices sans révéler votre mot !
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}

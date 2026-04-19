@@ -1,0 +1,43 @@
+{% extends 'animetix/base.html' %}
+
+{% block title %}Animetix - L'Intrus d'Archetyp{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10 text-center">
+        <h2 class="mb-4">🧩 Mode L'Intrus d'Archetyp ({{ media_type }})</h2>
+        <p class="lead mb-5">
+            L'IA a analysé deux {% if media_type == 'Character' %}personnages secrets{% else %}œuvres secrètes{% endif %}. 
+            Saurez-vous trouver <strong>l'intrus</strong> qui n'a rien à voir avec ce scénario ?
+        </p>
+
+        <div class="card shadow-lg mb-5" style="border-left: 5px solid #e94560;">
+            <div class="card-body p-5">
+                <h4 class="card-title mb-4 text-start">📖 Scénario Mystère :</h4>
+                {% if reasoning %}
+                <div class="alert alert-secondary small mb-4 text-start" style="font-family: monospace;">
+                    {{ reasoning }}
+                </div>
+                {% endif %}
+                <div class="lead text-start" style="line-height: 1.8; text-align: justify; font-style: italic;">
+                    "{{ scenario }}"
+                </div>
+            </div>
+        </div>
+
+        <h4 class="mb-4">Lequel de ces {{ media_type }}s est l'intrus ?</h4>
+        <form action="{% url 'intruder_guess' %}" method="post">
+            {% csrf_token %}
+            <div class="row">
+                {% for option in options %}
+                <div class="col-md-4 mb-3">
+                    <button type="submit" name="choice" value="{{ option }}" class="btn btn-outline-dark btn-lg w-100 p-4 shadow-sm h-100">
+                        {{ option }}
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

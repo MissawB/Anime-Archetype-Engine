@@ -1,0 +1,78 @@
+{% extends 'animetix/base.html' %}
+
+{% block title %}Animetix - Story Archetypist{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <h1 class="display-5 mb-4">🎬 Story Archetypist</h1>
+        <p class="lead mb-5">Fusionnez deux <strong>{{ media_type }}s</strong> en un scénario unique.</p>
+        
+        <div class="card p-4 shadow-sm">
+            <form action="{% url 'archetypist' %}" method="post">
+                {% csrf_token %}
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Œuvre A :</label>
+                        <select id="select-A" name="title_A" placeholder="Aléatoire si vide...">
+                            <option value=""></option>
+                            <!-- Options injectées par JS -->
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Œuvre B :</label>
+                        <select id="select-B" name="title_B" placeholder="Aléatoire si vide...">
+                            <option value=""></option>
+                            <!-- Options injectées par JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="alert alert-light border small text-muted mb-4">
+                    💡 Laissez les sélections vides pour obtenir un mélange aléatoire cohérent.
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 py-3">
+                    Générer la Fusion
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const items = {{ items_json|safe }};
+
+    function setupSelect(id) {
+        return new TomSelect(id, {
+            valueField: 'title',
+            labelField: 'title',
+            searchField: ['title', 'title_english', 'title_native'],
+            maxOptions: 50,
+            options: items,
+            render: {
+                option: function(data, escape) {
+                    return `<div class="d-flex align-items-center py-1">
+                        <div class="me-2" style="width: 30px; height: 40px; flex-shrink: 0;">
+                            <img src="${escape(data.image)}" class="rounded w-100 h-100" style="object-fit: cover;" onerror="this.src='https://via.placeholder.com/30x40?text=?'">
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden text-start">
+                            <div class="fw-bold text-truncate small">${escape(data.title)}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">${escape(data.title_english || '')}</div>
+                        </div>
+                    </div>`;
+                },
+                item: function(data, escape) {
+                    return `<div class="small fw-bold">${escape(data.title)}</div>`;
+                }
+            }
+        });
+    }
+
+    setupSelect("#select-A");
+    setupSelect("#select-B");
+</script>
+{% endblock %}

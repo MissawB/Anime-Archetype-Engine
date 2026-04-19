@@ -1,0 +1,12 @@
+.venv
+*.pyc
+__pycache__
+db.sqlite3
+.git
+.idea
+data/raw/*
+data/processed/*
+data/models/*
+data/artifacts/*
+.env
+node_modules

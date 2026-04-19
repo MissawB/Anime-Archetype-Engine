@@ -1,0 +1,282 @@
+{% extends 'animetix/base.html' %}
+
+{% block title %}Animetix - Undercover Party{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <h2 class="mb-4">🕵️ Undercover Party ({{ num_players }} joueurs)</h2>
+        
+        <div id="player-setup-area">
+            {% for player in players %}
+            <div class="card shadow-sm mb-3 player-card" id="card-{{ player.id }}" style="display: {% if forloop.first %}block{% else %}none{% endif %};">
+                <div class="card-body py-5">
+                    <h3 class="card-title mb-4">Joueur {{ player.id }}</h3>
+                    <p class="text-muted mb-4">Passez l'appareil à ce joueur et cliquez pour voir votre mot.</p>
+                    
+                    <div class="secret-word-area mb-4" id="secret-{{ player.id }}" style="display: none;">
+                        {% if player.image %}
+                        <img src="{{ player.image }}" class="rounded shadow-sm mb-3" style="height: 200px; width: 140px; object-fit: cover;">
+                        {% endif %}
+                        <h2 class="text-primary mb-1">{{ player.title }}</h2>
+                        <h4 class="text-muted mb-1">{{ player.title_en }}</h4>
+                        <h5 class="text-secondary mb-3">{{ player.title_nat }}</h5>
+                        
+                        <p class="badge {% if player.role == 'Civil' %}bg-success{% else %}bg-danger{% endif %} fs-5">
+                            Rôle : {{ player.role }}
+                        </p>
+                    </div>
+
+                    <button class="btn btn-warning btn-lg reveal-btn" onclick="revealCard({{ player.id }})">👁️ Voir mon mot</button>
+                    <button class="btn btn-secondary btn-lg next-btn" style="display: none;" onclick="nextPlayer({{ player.id }}, {{ num_players }})">✅ C'est bon, au suivant !</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+            
+        <div id="game-debate-area" style="display: none;">
+            <div class="alert alert-primary py-4 shadow-sm mb-4">
+                <h1 class="display-5">🗣️ Phase de Débat</h1>
+                <p class="lead">Donnez vos indices, débattez, puis éliminez les suspects un par un.</p>
+            </div>
+
+            <div class="row row-cols-2 row-cols-md-3 g-3 mb-5" id="elimination-list">
+                {% for player in players %}
+                <div class="col" id="elim-box-{{ player.id }}">
+                    <div class="card h-100 border-primary player-btn-card" onclick="promptElimination({{ player.id }}, '{{ player.role }}')">
+                        <div class="card-body d-flex flex-column justify-content-center align-items-center p-4" style="cursor: pointer;">
+                            <h4 class="mb-0">Joueur {{ player.id }}</h4>
+                            <div class="mt-2 status-label text-muted">Vivant</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <hr class="my-5">
+            
+            <button class="btn btn-danger btn-lg" id="btn-reveal-all" onclick="revealFinalTruth()">
+                🏁 Révéler la vérité finale
+            </button>
+
+            <div id="final-truth-area" style="display: none;" class="mt-5">
+                <div class="card bg-light mb-4 border-0 shadow-sm">
+                    <div class="card-body py-4">
+                        <h5 class="text-uppercase text-muted small mb-2">💡 Indice de l'IA ({{ icon }}) :</h5>
+                        <p class="h2 mb-0 text-dark">"{{ clue }}"</p>
+                    </div>
+                </div>
+
+                <div class="card shadow">
+                    <div class="card-header bg-dark text-white">Récapitulatif des Rôles</div>
+                    <div class="card-body text-start">
+                        {% for player in players %}
+                        <div class="mb-3 border-bottom pb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <span class="badge {% if player.role == 'Civil' %}bg-success{% else %}bg-danger{% endif %}">{{ player.role }}</span>
+                                </div>
+                                <div>
+                                    <strong>Joueur {{ player.id }} :</strong> {{ player.title }}
+                                    <div class="text-muted small">{{ player.title_en }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <a href="{% url 'undercover_party_setup' %}" class="btn btn-primary btn-lg mt-4 px-5">Nouvelle Partie</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmation Élimination -->
+<div class="modal fade" id="elimModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Éliminer un joueur ?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="lead">Voulez-vous vraiment éliminer le <strong id="elimPlayerName">Joueur X</strong> ?</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger px-4" id="confirmElimBtn">Éliminer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Résultat Fin de Partie -->
+<div class="modal fade" id="winModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center py-4 shadow-lg border-0">
+            <div class="modal-body">
+                <h1 class="display-1 mb-3" id="winEmoji">🎉</h1>
+                <h2 class="fw-bold mb-3" id="winTitle">VICTOIRE !</h2>
+                <p class="lead mb-4" id="winMessage">Message ici.</p>
+                <button type="button" class="btn btn-primary btn-lg px-5" data-bs-dismiss="modal">Voir le récapitulatif</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmation Révélation Finale -->
+<div class="modal fade" id="revealModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Révéler la vérité ?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="lead">Voulez-vous arrêter la partie et voir tous les mots ainsi que l'indice de l'IA ?</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger px-4" onclick="finishGameFromModal()">Révéler</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .secret-word-area {
+        animation: fadeIn 0.5s;
+    }
+    .player-btn-card:hover:not(.bg-light) {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+    .modal-content {
+        border-radius: 20px;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // État du jeu
+    let activeCivils = {{ players|length }} - 1;
+    let activeUndercovers = 1;
+    let gameOver = false;
+    let pendingElimination = null;
+
+    // Initialisation après chargement complet du DOM et de Bootstrap
+    let elimModal, winModal, revealModal;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        elimModal = new bootstrap.Modal(document.getElementById('elimModal'));
+        winModal = new bootstrap.Modal(document.getElementById('winModal'));
+        revealModal = new bootstrap.Modal(document.getElementById('revealModal'));
+    });
+
+    function revealCard(id) {
+        document.getElementById('secret-' + id).style.display = 'block';
+        document.querySelector('#card-' + id + ' .reveal-btn').style.display = 'none';
+        document.querySelector('#card-' + id + ' .next-btn').style.display = 'inline-block';
+    }
+
+    function nextPlayer(currentId, total) {
+        document.getElementById('card-' + currentId).style.display = 'none';
+        if (currentId < total) {
+            document.getElementById('card-' + (currentId + 1)).style.display = 'block';
+        } else {
+            document.getElementById('player-setup-area').style.display = 'none';
+            document.getElementById('game-debate-area').style.display = 'block';
+        }
+    }
+
+    function promptElimination(id, role) {
+        if (gameOver) return;
+        const box = document.getElementById('elim-box-' + id).querySelector('.card');
+        if (box.classList.contains('bg-light')) return;
+
+        pendingElimination = { id, role };
+        document.getElementById('elimPlayerName').innerText = "Joueur " + id;
+        elimModal.show();
+    }
+
+    document.getElementById('confirmElimBtn').addEventListener('click', function() {
+        if (!pendingElimination) return;
+        elimModal.hide();
+        executeElimination(pendingElimination.id, pendingElimination.role);
+        pendingElimination = null;
+    });
+
+    function executeElimination(id, role) {
+        const box = document.getElementById('elim-box-' + id).querySelector('.card');
+        const status = box.querySelector('.status-label');
+        
+        box.classList.remove('border-primary');
+        box.classList.add('bg-light', 'text-muted');
+        
+        if (role === 'Undercover') {
+            activeUndercovers--;
+            status.innerHTML = '<span class="text-danger fw-bold">❌ UNDERCOVER !</span>';
+            status.classList.remove('text-muted');
+            showWinModal("🎉 VICTOIRE DES CIVILS !", "L'Undercover (Joueur " + id + ") a été démasqué avec succès.", "🎉");
+            checkEndConditions(true);
+        } else {
+            activeCivils--;
+            status.innerHTML = '<span class="text-success">✅ CIVIL</span>';
+            status.classList.remove('text-muted');
+            checkEndConditions();
+        }
+    }
+
+    function checkEndConditions(undercoverFound = false) {
+        if (undercoverFound) {
+            revealFinalTruth(true);
+        } else if (activeUndercovers >= activeCivils) {
+            showWinModal("😈 VICTOIRE DE L'UNDERCOVER !", "Il reste autant de Civils que d'Undercovers. L'infiltré a gagné !", "😈");
+            revealFinalTruth(true);
+        }
+    }
+
+    function showWinModal(title, message, emoji) {
+        document.getElementById('winTitle').innerText = title;
+        document.getElementById('winMessage').innerText = message;
+        document.getElementById('winEmoji').innerText = emoji;
+        winModal.show();
+    }
+
+    function revealFinalTruth(automatic = false) {
+        if (gameOver) return;
+        
+        if (automatic) {
+            finishGame();
+        } else {
+            revealModal.show();
+        }
+    }
+
+    function finishGameFromModal() {
+        revealModal.hide();
+        finishGame();
+    }
+
+    function finishGame() {
+        gameOver = true;
+        document.getElementById('final-truth-area').style.display = 'block';
+        document.getElementById('btn-reveal-all').style.display = 'none';
+        document.querySelectorAll('.player-btn-card').forEach(c => c.style.cursor = 'default');
+        
+        // Petit délai pour laisser le temps de voir la modal avant le scroll
+        setTimeout(() => {
+            window.scrollTo({
+                top: document.getElementById('final-truth-area').offsetTop,
+                behavior: 'smooth'
+            });
+        }, 500);
+    }
+</script>
+{% endblock %}

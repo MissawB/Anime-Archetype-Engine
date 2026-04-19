@@ -4,24 +4,33 @@ import json
 
 def clean_description(text):
     """
-    Clean the anime description by removing HTML tags,
+    Clean the anime description by removing HTML tags and useless boilerplate.
     """
     if not text:
-        return ""  # Return empty string if text is None or empty
+        return ""
 
     # 1. Delete HTML tags
     text = re.sub(r'<[^>]+>', ' ', text)
 
-    # 2. Delete the part "(Source:...)"
-    text = text.split('(Source:')[0].strip()
+    # 2. Remove typical boilerplate patterns
+    patterns_to_remove = [
+        r'\(Source:.*?\)',
+        r'\[Written by.*?\]',
+        r'Notes?:.*',  # Gère Note: et Notes:
+        r'Official website:.*',
+        r'Originally aired.*',
+        r'Adapted from.*',
+        r'Based on the.*?manga.*',
+        r'Included in.*',
+        r'Winner of the.*?award.*',
+    ]
+    for pattern in patterns_to_remove:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
 
-    # 3. Delete the part "Notes:"
-    text = text.split('Notes:')[0].strip()
-
-    # 4. Remove URLs
+    # 3. Remove URLs
     text = re.sub(r'https?://\S+', '', text)
 
-    # 5. Normalize whitespace
+    # 4. Normalize whitespace
     text = re.sub(r'\s+', ' ', text).strip()
 
     return text
@@ -91,10 +100,15 @@ for anime_id, anime in animes_map.items():
         clean_data = {
             'title': anime['title']['romaji'],
             'title_english': anime['title']['english'],
+            'title_native': anime['title']['native'],
             'description': clean_desc,
             'genres': anime['genres'],
             'tags': clean_tags,
-            'popularity': anime['popularity']
+            'popularity': anime['popularity'],
+            'year': anime['startDate']['year'] if anime['startDate'] else None,
+            'image': anime['coverImage']['large'] if anime['coverImage'] else None,
+            'reviews': [r['summary'] for r in anime['reviews']['nodes']] if anime.get('reviews') else [],
+            'recommendations': {r['mediaRecommendation']['title']['romaji']: r['rating'] for r in anime['recommendations']['nodes'] if r.get('mediaRecommendation')} if anime.get('recommendations') else {}
         }
         clean_root_animes.append(clean_data)
 

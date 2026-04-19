@@ -1,0 +1,43 @@
+{% extends 'animetix/base.html' %}
+
+{% block title %}Animetix - Résultat{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center text-center">
+    <div class="col-md-8">
+        {% if is_correct %}
+        <div class="alert alert-success py-5">
+            <h1 class="display-3">🎉 BIEN JOUÉ !</h1>
+            <p class="lead mt-3">Vous avez démasqué l'intrus : <strong>{{ answer }}</strong>.</p>
+        </div>
+        {% else %}
+        <div class="alert alert-danger py-5">
+            <h1 class="display-3">😢 DOMMAGE !</h1>
+            <p class="lead mt-3">L'intrus était bien <strong>{{ answer }}</strong>.</p>
+        </div>
+        {% endif %}
+
+        <div class="card mb-5 shadow-sm">
+            <div class="row g-0">
+                <div class="col-md-4">
+                    {% if answer_data.image %}
+                    <img src="{{ answer_data.image }}" class="img-fluid rounded-start" alt="{{ answer }}">
+                    {% endif %}
+                </div>
+                <div class="col-md-8">
+                    <div class="card-body text-start">
+                        <h5 class="card-title">{{ answer }} {% if answer_data.year %}({{ answer_data.year }}){% endif %}</h5>
+                        <p class="card-text text-muted small">{{ answer_data.tags|join:", " }}</p>
+                        <p class="card-text">{{ answer_data.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-block">
+            <a href="{% url 'archetypist' %}" class="btn btn-primary btn-lg px-5">Rejouer</a>
+            <a href="{% url 'index' %}" class="btn btn-outline-secondary btn-lg px-5">Accueil</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

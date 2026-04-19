@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Animetix{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; }
+        .wrapper { display: flex; align-items: stretch; width: 100%; overflow-x: hidden; }
+        
+        /* Sidebar Styles */
+        #sidebar {
+            min-width: 250px;
+            max-width: 250px;
+            background: #1a1a2e;
+            color: #fff;
+            transition: all 0.3s ease;
+            min-height: 100vh;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        #sidebar.active {
+            margin-left: -250px;
+        }
+        
+        #sidebar .sidebar-header { padding: 20px; background: #16213e; position: relative; }
+        
+        .sidebar-toggle-btn {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            z-index: 999;
+            background: #1a1a2e;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        #sidebar.active + #content .sidebar-toggle-btn {
+            display: block;
+        }
+
+        .close-sidebar {
+            position: absolute;
+            right: 10px;
+            top: 20px;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+        .close-sidebar:hover { opacity: 1; }
+
+        #content {
+            width: 100%;
+            padding: 40px;
+            transition: all 0.3s ease;
+            min-height: 100vh;
+        }
+
+        #sidebar ul li a {
+            padding: 15px 20px;
+            font-size: 1.1em;
+            display: block;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: 0.3s;
+        }
+        #sidebar ul li a:hover { color: #fff; background: #e94560; }
+        #sidebar ul li.active > a { color: #fff; background: #e94560; font-weight: bold; }
+        
+        .mode-toggle { margin: 20px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 15px; }
+        .card { border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-primary { background-color: #e94560; border: none; }
+        .btn-primary:hover { background-color: #c62a48; }
+        .ts-control { border-radius: 10px !important; border: 2px solid #ced4da !important; padding: 10px !important; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="shadow-lg">
+            <div class="sidebar-header text-center">
+                <h3 class="fw-bold m-0">🧩 Animetix</h3>
+                <button type="button" id="sidebarCollapse" class="close-sidebar d-none d-md-block">
+                    <span>&laquo;</span>
+                </button>
+            </div>
+
+            <div class="mode-toggle text-center">
+                <p class="small text-uppercase opacity-50 mb-2">SÉLECTION DE L'UNIVERS</p>
+                <div class="btn-group w-100 mb-2" role="group">
+                    <a href="{% url 'switch_mode' 'Anime' %}" class="btn btn-sm {% if request.session.media_type == 'Anime' or not request.session.media_type %}btn-primary{% else %}btn-outline-light{% endif %}">
+                        Animé 🎌
+                    </a>
+                    <a href="{% url 'switch_mode' 'Manga' %}" class="btn btn-sm {% if request.session.media_type == 'Manga' %}btn-primary{% else %}btn-outline-light{% endif %}">
+                        Manga 📚
+                    </a>
+                </div>
+                <a href="{% url 'switch_mode' 'Character' %}" class="btn btn-sm w-100 {% if request.session.media_type == 'Character' %}btn-primary{% else %}btn-outline-light{% endif %}">
+                    Personnage 👤
+                </a>
+            </div>
+
+            <ul class="list-unstyled components mt-4">
+                <li class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+                    <a href="{% url 'index' %}">🏠 Accueil</a>
+                </li>
+                <li class="{% if request.resolver_match.url_name == 'game' %}active{% endif %}">
+                    <a href="{% url 'game' %}">🎯 Animetix Classic</a>
+                </li>
+                <li class="{% if request.resolver_match.url_name == 'archetypist' %}active{% endif %}">
+                    <a href="{% url 'archetypist' %}">🎬 Story Archetypist</a>
+                </li>
+                <li class="{% if request.resolver_match.url_name == 'paradox' %}active{% endif %}">
+                    <a href="{% url 'paradox' %}">🧩 Le Paradoxe</a>
+                </li>
+                <li class="{% if request.resolver_match.url_name == 'undercover_party_setup' %}active{% endif %}">
+                    <a href="{% url 'undercover_party_setup' %}">🕵️ Undercover Party</a>
+                </li>
+            </ul>
+            
+            <div class="mt-auto p-4 text-center">
+                <hr class="opacity-25">
+                <small class="text-muted">Mode Actuel :<br><strong>{{ request.session.media_type|default:"Anime" }}</strong></small>
+            </div>
+        </nav>
+
+        <!-- Page Content -->
+        <div id="content">
+            <button type="button" id="sidebarOpen" class="sidebar-toggle-btn">
+                <span>&raquo;</span>
+            </button>
+            <div class="container-fluid">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const sidebar = document.getElementById('sidebar');
+            const collapseBtn = document.getElementById('sidebarCollapse');
+            const openBtn = document.getElementById('sidebarOpen');
+
+            if (localStorage.getItem('sidebar-active') === 'true') {
+                sidebar.classList.add('active');
+            }
+
+            collapseBtn.addEventListener('click', function() {
+                sidebar.classList.add('active');
+                localStorage.setItem('sidebar-active', 'true');
+            });
+
+            openBtn.addEventListener('click', function() {
+                sidebar.classList.remove('active');
+                localStorage.setItem('sidebar-active', 'false');
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

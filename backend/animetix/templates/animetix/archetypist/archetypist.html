@@ -1,0 +1,65 @@
+{% extends 'animetix/base.html' %}
+
+{% block title %}Animetix - Scénario Archétypal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <h2 class="text-center mb-5">🎬 Scénario Archétypal ({{ media_type }})</h2>
+        
+        {% if show_titles %}
+        <div class="row mb-5">
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-primary text-white">{% if media_type == 'Character' %}Personnage A{% else %}Œuvre A{% endif %}</div>
+                    {% if item_A.image %}<img src="{{ item_A.image }}" class="card-img-top" alt="{{ item_A.title }}" style="height: 250px; object-fit: cover;">{% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ item_A.title }}</h5>
+                        <p class="card-text small text-muted">
+                            {% if media_type == 'Character' %}Origine : {{ item_A.origin }}{% else %}{{ item_A.tags|slice:":5"|join:", " }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-secondary text-white">{% if media_type == 'Character' %}Personnage B{% else %}Œuvre B{% endif %}</div>
+                    {% if item_B.image %}<img src="{{ item_B.image }}" class="card-img-top" alt="{{ item_B.title }}" style="height: 250px; object-fit: cover;">{% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ item_B.title }}</h5>
+                        <p class="card-text small text-muted">
+                            {% if media_type == 'Character' %}Origine : {{ item_B.origin }}{% else %}{{ item_B.tags|slice:":5"|join:", " }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center mb-5 shadow-sm">
+            🕵️ <strong>Mystère :</strong> Les {% if media_type == 'Character' %}personnages sources sont masqués{% else %}œuvres sources sont masquées{% endif %} pour préserver l'immersion.
+        </div>
+        {% endif %}
+
+        <div class="card shadow-lg mb-5" style="border-left: 5px solid #e94560;">
+            <div class="card-body p-5">
+                <h4 class="card-title mb-4">📖 Le Synopsis Fusionné :</h4>
+                
+                {% if reasoning %}
+                <div class="alert alert-secondary small mb-4" style="font-family: 'Courier New', Courier, monospace;">
+                    <strong>🧠 Analyse sémantique :</strong><br>
+                    {{ reasoning }}
+                </div>
+                {% endif %}
+
+                <div class="lead" style="line-height: 1.8; text-align: justify; font-size: 1.2rem;">
+                    {{ scenario|linebreaks }}
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a href="{% url 'archetypist' %}" class="btn btn-primary btn-lg">Générer un autre scénario</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
