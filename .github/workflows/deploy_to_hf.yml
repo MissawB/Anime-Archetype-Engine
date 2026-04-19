@@ -10,31 +10,22 @@ jobs:
     environment: HF
     
     steps:
-      # Utilisation de la v4 pour éviter les warnings Node.js
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
       
-      # Vérification de sécurité pour le token
-      - name: Check Token
-        run: |
-          if [ -z "${{ secrets.HF_TOKEN }}" ]; then
-            echo "❌ ERROR: HF_TOKEN is empty. Check your GitHub Environment secrets."
-            exit 1
-          fi
-
       # Déploiement du Visage (Django)
-      # On utilise HEAD:main pour s'assurer de pousser la branche actuelle vers la branche main de HF
       - name: Push Web Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push --force https://MissawB:$HF_TOKEN@huggingface.co/spaces/MissawB/animetix-web HEAD:main
+          # Utilisation de oauth2 comme nom d'utilisateur pour valider le token
+          git push --force https://oauth2:$HF_TOKEN@huggingface.co/spaces/MissawB/animetix-web HEAD:main
           
       # Déploiement du Cerveau (FastAPI)
       - name: Push Brain Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push --force https://MissawB:$HF_TOKEN@huggingface.co/spaces/MissawB/animetix-brain HEAD:main
+          git push --force https://oauth2:$HF_TOKEN@huggingface.co/spaces/MissawB/animetix-brain HEAD:main
