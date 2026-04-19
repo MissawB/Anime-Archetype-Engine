@@ -33,25 +33,90 @@ jobs:
           
           api = HfApi()
           token = os.environ['HF_TOKEN']
-          
-          def sync_space(repo_id, ignore):
-              print(f'🚀 Syncing {repo_id}...')
-              # Crée le repo si absent
+
+          def deploy_space(repo_id, docker_content, readme_content, ignore):
+              print(f'🚀 Preparing {repo_id}...')
               create_repo(repo_id, token=token, repo_type='space', space_sdk='docker', exist_ok=True)
               
-              # Upload
+              # 1. Upload du code (en ignorant les fichiers inutiles)
               api.upload_folder(
                   folder_path='.',
                   repo_id=repo_id,
                   repo_type='space',
                   token=token,
-                  ignore_patterns=ignore
+                  ignore_patterns=ignore + ['Dockerfile', 'README.md'] # On ignore les originaux
               )
-              print(f'✅ {repo_id} synced!')
+              
+              # 2. Upload du Dockerfile spécifique
+              api.upload_file(
+                  path_or_fileobj=docker_content.encode(),
+                  path_in_repo='Dockerfile',
+                  repo_id=repo_id,
+                  repo_type='space',
+                  token=token
+              )
+              
+              # 3. Upload du README spécifique
+              api.upload_file(
+                  path_or_fileobj=readme_content.encode(),
+                  path_in_repo='README.md',
+                  repo_id=repo_id,
+                  repo_type='space',
+                  token=token
+              )
+              print(f'✅ {repo_id} deployed with custom config!')
 
-          # 1. Sync WEB (Django)
-          sync_space('MissawB/animetix-web', ['.venv/*', '.env', 'data/artifacts/*.npy', 'data/models/*', 'data/raw/*', 'brain.py'])
+          # --- CONFIGURATION WEB ---
+          web_docker = \"\"\"FROM python:3.11-slim
+          ENV PYTHONDONTWRITEBYTECODE=1
+          ENV PYTHONUNBUFFERED=1
+          ENV PYTHONPATH='/app/backend:${PYTHONPATH}'
+          WORKDIR /app
+          RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+          COPY requirements.txt .
+          RUN pip install --no-cache-dir -r requirements.txt gunicorn
+          COPY . .
+          RUN mkdir -p data/artifacts data/processed
+          EXPOSE 7860
+          CMD [\\\"gunicorn\\\", \\\"--bind\\\", \\\"0.0.0.0:7860\\\", \\\"--workers\\\", \\\"2\\\", \\\"--timeout\\\", \\\"120\\\", \\\"animetix_project.wsgi:application\\\"]
+          \"\"\"
           
-          # 2. Sync BRAIN (FastAPI)
-          sync_space('MissawB/animetix-brain', ['.venv/*', '.env', 'backend/*', 'data/raw/*', 'data/processed/*', '.github/*'])
+          web_readme = \"\"\"---
+          title: Animetix
+          emoji: 🧩
+          colorFrom: red
+          colorTo: yellow
+          sdk: docker
+          pinned: false
+          ---
+          # 🧩 Animetix Web
+          Interface utilisateur Django pour le projet Animetix.
+          Client du cerveau : https://huggingface.co/spaces/MissawB/animetix-brain
+          \"\"\"
+
+          # --- CONFIGURATION BRAIN ---
+          brain_docker = \"\"\"FROM python:3.11-slim
+          WORKDIR /app
+          RUN pip install --no-cache-dir fastapi uvicorn numpy scikit-learn pydantic huggingface_hub
+          COPY brain.py .
+          COPY data/artifacts/ ./data/artifacts/
+          EXPOSE 7860
+          CMD [\\\"uvicorn\\\", \\\"brain:app\\\", \\\"--host\\\", \\\"0.0.0.0\\\", \\\"--port\\\", \\\"7860\\\"]
+          \"\"\"
+          
+          brain_readme = \"\"\"---
+          title: Animetix Brain
+          emoji: 🧠
+          colorFrom: blue
+          colorTo: indigo
+          sdk: docker
+          pinned: false
+          ---
+          # 🧠 Animetix Brain API
+          Moteur de calcul vectoriel et Inference Llama 3.2.
+          \"\"\"
+
+          # --- EXÉCUTION ---
+          deploy_space('MissawB/animetix-web', web_docker, web_readme, ['.venv/*', '.env', 'data/artifacts/*.npy', 'data/models/*', 'data/raw/*', 'brain.py'])
+          deploy_space('MissawB/animetix-brain', brain_docker, brain_readme, ['.venv/*', '.env', 'backend/*', 'data/raw/*', 'data/processed/*', '.github/*'])
           "
