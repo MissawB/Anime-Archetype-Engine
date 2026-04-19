@@ -105,9 +105,19 @@ class AnimetixService:
                 print(f"🌐 Using Remote Brain for {media_type} vectors.")
 
             d = self.data[media_type]
-            d["titles"] = [item['title'] for item in d["lookup"]]
+            # On standardise : 'title' est la clé de référence
+            d["titles"] = []
+            for item in d["lookup"]:
+                t = item.get('title') or item.get('name')
+                if t: d["titles"].append(t)
+            
             d["title_to_index"] = {t: i for i, t in enumerate(d["titles"])}
-            d["title_to_full_data"] = {item['title']: item for item in d["db"]}
+            
+            d["title_to_full_data"] = {}
+            for item in d["db"]:
+                t = item.get('title') or item.get('name')
+                if t: d["title_to_full_data"][t] = item
+            
             return d
         except Exception as e:
             print(f"Error loading {media_type} data: {e}"); return None

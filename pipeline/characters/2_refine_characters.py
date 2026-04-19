@@ -131,7 +131,7 @@ def refine_character(char):
 
     return {
         "id": char['id'], 
-        "name": name, 
+        "title": name, 
         "origin": char.get('origin_media', 'Unknown'),
         "metadata": metadata, 
         "entities": {

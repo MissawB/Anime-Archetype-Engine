@@ -23,7 +23,7 @@ lookup_data = []
 print("🔍 Encodage et préparation des données de jeu...")
 for char in chars_db:
     # 1. Texte enrichi pour l'embedding
-    name = char['name']
+    title = char['title']
     bio = char['biography']
     meta = char.get('metadata', {})
     entities = char.get('entities', {})
@@ -31,7 +31,7 @@ for char in chars_db:
     orgs = meta.get('affiliations', []) + entities.get('organizations', [])
     related = entities.get('related_characters', [])
     
-    rich_text = f"Character: {name}. Orgs: {' '.join(orgs)}. Links: {' '.join(related)}. {bio}"
+    rich_text = f"Character: {title}. Orgs: {' '.join(orgs)}. Links: {' '.join(related)}. {bio}"
     corpus.append(rich_text)
     
     # 2. Données de comparaison pour Django
@@ -42,7 +42,7 @@ for char in chars_db:
     if h_match: h_val = int(h_match.group(1))
 
     lookup_data.append({
-        "title": name,
+        "title": title,
         "origin": char['origin'],
         "image": char['image'],
         "popularity": char.get('popularity', {}).get('favourites', 0),
