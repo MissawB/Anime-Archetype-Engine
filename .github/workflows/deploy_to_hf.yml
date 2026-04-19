@@ -30,6 +30,7 @@ jobs:
           python -c "
           from huggingface_hub import HfApi, create_repo
           import os
+          import textwrap
           
           api = HfApi()
           token = os.environ['HF_TOKEN']
@@ -38,18 +39,22 @@ jobs:
               print(f'🚀 Preparing {repo_id}...')
               create_repo(repo_id, token=token, repo_type='space', space_sdk='docker', exist_ok=True)
               
-              # 1. Upload du code (en ignorant les fichiers inutiles)
+              # On retire l'indentation des chaînes multi-lignes pour Docker
+              docker_final = textwrap.dedent(docker_content).strip()
+              readme_final = textwrap.dedent(readme_content).strip()
+
+              # 1. Upload du code
               api.upload_folder(
                   folder_path='.',
                   repo_id=repo_id,
                   repo_type='space',
                   token=token,
-                  ignore_patterns=ignore + ['Dockerfile', 'README.md'] # On ignore les originaux
+                  ignore_patterns=ignore + ['Dockerfile', 'README.md']
               )
               
               # 2. Upload du Dockerfile spécifique
               api.upload_file(
-                  path_or_fileobj=docker_content.encode(),
+                  path_or_fileobj=docker_final.encode(),
                   path_in_repo='Dockerfile',
                   repo_id=repo_id,
                   repo_type='space',
@@ -58,7 +63,7 @@ jobs:
               
               # 3. Upload du README spécifique
               api.upload_file(
-                  path_or_fileobj=readme_content.encode(),
+                  path_or_fileobj=readme_final.encode(),
                   path_in_repo='README.md',
                   repo_id=repo_id,
                   repo_type='space',
@@ -67,7 +72,8 @@ jobs:
               print(f'✅ {repo_id} deployed with custom config!')
 
           # --- CONFIGURATION WEB ---
-          web_docker = \"\"\"FROM python:3.11-slim
+          web_docker = \"\"\"
+          FROM python:3.11-slim
           ENV PYTHONDONTWRITEBYTECODE=1
           ENV PYTHONUNBUFFERED=1
           ENV PYTHONPATH='/app/backend:${PYTHONPATH}'
@@ -81,7 +87,8 @@ jobs:
           CMD [\\\"gunicorn\\\", \\\"--bind\\\", \\\"0.0.0.0:7860\\\", \\\"--workers\\\", \\\"2\\\", \\\"--timeout\\\", \\\"120\\\", \\\"animetix_project.wsgi:application\\\"]
           \"\"\"
           
-          web_readme = \"\"\"---
+          web_readme = \"\"\"
+          ---
           title: Animetix
           emoji: 🧩
           colorFrom: red
@@ -95,7 +102,8 @@ jobs:
           \"\"\"
 
           # --- CONFIGURATION BRAIN ---
-          brain_docker = \"\"\"FROM python:3.11-slim
+          brain_docker = \"\"\"
+          FROM python:3.11-slim
           WORKDIR /app
           RUN pip install --no-cache-dir fastapi uvicorn numpy scikit-learn pydantic huggingface_hub
           COPY brain.py .
@@ -104,7 +112,8 @@ jobs:
           CMD [\\\"uvicorn\\\", \\\"brain:app\\\", \\\"--host\\\", \\\"0.0.0.0\\\", \\\"--port\\\", \\\"7860\\\"]
           \"\"\"
           
-          brain_readme = \"\"\"---
+          brain_readme = \"\"\"
+          ---
           title: Animetix Brain
           emoji: 🧠
           colorFrom: blue
