@@ -71,7 +71,13 @@ jobs:
           WORKDIR /app
           RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
           COPY requirements.txt .
-          RUN pip install --no-cache-dir -r requirements.txt gunicorn
+          # On filtre requirements.txt pour enlever les libs lourdes avant l'install
+          RUN sed -i '/torch/d' requirements.txt && \
+              sed -i '/transformers/d' requirements.txt && \
+              sed -i '/sentence-transformers/d' requirements.txt && \
+              sed -i '/accelerate/d' requirements.txt && \
+              sed -i '/bitsandbytes/d' requirements.txt && \
+              pip install --no-cache-dir -r requirements.txt gunicorn
           COPY . .
           # On s'assure que les dossiers existent
           RUN mkdir -p data/artifacts data/processed

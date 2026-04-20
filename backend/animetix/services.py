@@ -2,11 +2,10 @@ import numpy as np
 import json
 import os
 import random
-import torch
 import requests
+import re
 from sklearn.metrics.pairwise import cosine_similarity
 from django.conf import settings
-from transformers import AutoProcessor, AutoModelForCausalLM, BitsAndBytesConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from typing import Any, List, Optional, Union
