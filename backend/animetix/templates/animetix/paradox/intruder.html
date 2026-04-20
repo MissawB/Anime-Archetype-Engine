@@ -26,18 +26,33 @@
         </div>
 
         <h4 class="mb-4">Lequel de ces {{ media_type }}s est l'intrus ?</h4>
-        <form action="{% url 'intruder_guess' %}" method="post">
-            {% csrf_token %}
-            <div class="row">
-                {% for option in options %}
-                <div class="col-md-4 mb-3">
-                    <button type="submit" name="choice" value="{{ option }}" class="btn btn-outline-dark btn-lg w-100 p-4 shadow-sm h-100">
-                        {{ option }}
+        <div class="row g-4 mb-5">
+            {% for option in options %}
+            <div class="col-md-4">
+                <form action="{% url 'intruder_guess' %}" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="choice" value="{{ option.title }}">
+                    <button type="submit" class="card h-100 w-100 text-start border-0 shadow-sm hover-card overflow-hidden" style="border-radius: 20px; transition: transform 0.2s;">
+                        <div style="height: 300px; width: 100%; position: relative;">
+                            <img src="{{ option.image }}" class="w-100 h-100" style="object-fit: cover;" alt="{{ option.title }}">
+                        </div>
+                        <div class="card-body p-3">
+                            <h5 class="fw-bold mb-1 text-truncate" title="{{ option.title }}">{{ option.title }}</h5>
+                            <div class="small text-muted text-truncate mb-1">{{ option.title_english }}</div>
+                            <div class="small text-info text-truncate">{{ option.title_native }}</div>
+                        </div>
                     </button>
-                </div>
-                {% endfor %}
+                </form>
             </div>
-        </form>
+            {% endfor %}
+        </div>
     </div>
 </div>
+
+<style>
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+</style>
 {% endblock %}

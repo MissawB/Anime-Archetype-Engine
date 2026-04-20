@@ -109,6 +109,6 @@ jobs:
           \"\"\"
 
           # EXÉCUTION
-          deploy_space('MissawB/animetix-web', web_docker, web_readme, ['.venv/*', '.env', 'data/artifacts/*.npy', 'data/models/*', 'data/raw/*', 'brain.py', 'pipeline/*', '.github/*'])
+          deploy_space('MissawB/animetix-web', web_docker, web_readme, ['.venv/*', '.env', 'data/models/*', 'data/raw/*', 'brain.py', 'pipeline/*', '.github/*'])
           deploy_space('MissawB/animetix-brain', brain_docker, brain_readme, ['.venv/*', '.env', 'backend/*', 'data/raw/*', 'data/processed/*', '.github/*', 'pipeline/*'])
           "

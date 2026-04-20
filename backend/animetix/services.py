@@ -96,12 +96,17 @@ class AnimetixService:
                 "db": json.load(open(db_path, encoding='utf-8')),
             }
             
-            # On charge TOUJOURS les vecteurs localement en mmap (très léger en RAM)
+            # On charge TOUJOURS les vecteurs localement en mmap (très léger en RAM) si possible
             # Cela permet aux modes Paradox et Undercover de fonctionner instantanément
-            print(f"🧠 Loading vectors in memory-map mode for {media_type}...")
-            self.data[media_type]["vectors_thematic"] = np.load(os.path.join(base_path, config["thematic"]), mmap_mode='r')
-            self.data[media_type]["vectors_plot"] = np.load(os.path.join(base_path, config["plot"]), mmap_mode='r')
-            self.data[media_type]["vectors_vibe"] = np.load(os.path.join(base_path, config["vibe"]), mmap_mode='r')
+            try:
+                print(f"🧠 Loading vectors in memory-map mode for {media_type}...")
+                self.data[media_type]["vectors_thematic"] = np.load(os.path.join(base_path, config["thematic"]), mmap_mode='r')
+                self.data[media_type]["vectors_plot"] = np.load(os.path.join(base_path, config["plot"]), mmap_mode='r')
+                self.data[media_type]["vectors_vibe"] = np.load(os.path.join(base_path, config["vibe"]), mmap_mode='r')
+                print(f"✅ {media_type} vectors loaded.")
+            except Exception as ve:
+                print(f"⚠️ Warning: Could not load vectors for {media_type}: {ve}")
+                # On ne bloque pas tout le service, on continue avec les JSON uniquement
             
             if os.getenv("BRAIN_API_URL"):
                 print(f"🌐 Remote Brain enabled for LLM tasks.")

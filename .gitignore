@@ -1,13 +1,11 @@
-# Ignorer tout le dossier data par défaut
-data/raw/
-data/models/
-
-# Mais on veut garder les fichiers JSON de config et lookup
+# Garder les fichiers JSON et NPY (vecteurs) pour le déploiement
 !data/artifacts/*.json
 !data/processed/*.json
+!data/artifacts/*.npy
 
-# Continuer d'ignorer les vecteurs (trop lourds pour Git/Web)
-data/artifacts/*.npy
+# Ignorer tout le reste de data par défaut
+data/raw/
+data/models/
 
 # Ignorer le fichier de secrets
 .env

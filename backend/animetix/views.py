@@ -102,10 +102,14 @@ def game_view(request):
         # Pour les personnages, on montre un personnage "proche" thématiquement
         if 'hint_sim' not in request.session:
             idx_secret = data['title_to_index'][secret_title]
-            sims = cosine_similarity(data['vectors_thematic'][idx_secret].reshape(1, -1), data['vectors_thematic'])[0]
-            # On prend un personnage très proche (top 5-15 pour ne pas donner la réponse direct)
-            top_indices = np.argsort(sims)[::-1]
-            hint_char = data['titles'][top_indices[random.randint(5, 15)]]
+            if 'vectors_thematic' in data:
+                sims = cosine_similarity(data['vectors_thematic'][idx_secret].reshape(1, -1), data['vectors_thematic'])[0]
+                # On prend un personnage très proche (top 5-15 pour ne pas donner la réponse direct)
+                top_indices = np.argsort(sims)[::-1]
+                hint_char = data['titles'][top_indices[random.randint(5, 15)]]
+            else:
+                # Fallback : on pioche un personnage aléatoire si pas de vecteurs
+                hint_char = random.choice(data['titles'])
             request.session['hint_sim'] = hint_char
         hints['sim'] = {'revealed': 'sim' in revealed, 'value': request.session.get('hint_sim'), 'locked': guess_count < 10}
     else:
@@ -227,7 +231,9 @@ def make_guess(request):
         else:
             # Logique Anime/Manga avec Recommandations et Plot
             sim_thematic = vec_sim
-            sim_plot = float(cosine_similarity(data['vectors_plot'][secret_idx].reshape(1, -1), data['vectors_plot'][guess_idx].reshape(1, -1))[0][0])
+            sim_plot = 0.0
+            if 'vectors_plot' in data:
+                sim_plot = float(cosine_similarity(data['vectors_plot'][secret_idx].reshape(1, -1), data['vectors_plot'][guess_idx].reshape(1, -1))[0][0])
             
             rec_rating = 0
             if guess_title in secret_full.get('recommendations', {}):
@@ -279,8 +285,10 @@ def archetypist_view(request):
                 t1, t2 = random.choices(valid_titles, k=2)
                 if t1 != t2:
                     idx1, idx2 = data['title_to_index'][t1], data['title_to_index'][t2]
-                    if cosine_similarity(data['vectors_plot'][idx1].reshape(1, -1), data['vectors_plot'][idx2].reshape(1, -1))[0][0] >= 0.70:
+                    if 'vectors_plot' in data and cosine_similarity(data['vectors_plot'][idx1].reshape(1, -1), data['vectors_plot'][idx2].reshape(1, -1))[0][0] >= 0.70:
                         found = True; break
+                    elif 'vectors_plot' not in data:
+                        found = True; break # On accepte n'importe quoi si pas de vecteurs
             if not found: t1, t2 = random.choices(valid_titles, k=2)
         else: t1, t2 = title_A, title_B
         item1, item2 = data['title_to_full_data'][t1], data['title_to_full_data'][t2]
@@ -303,19 +311,29 @@ def paradox_view(request):
         t1, t2 = random.choices(valid_titles[:500], k=2)
         idx1 = data['title_to_index'][t1]
         intruder = None
-        for _ in range(30):
-            ti = random.choice(valid_titles)
-            if ti not in [t1, t2]:
-                idxi = data['title_to_index'][ti]
-                if cosine_similarity(data['vectors_thematic'][idx1].reshape(1, -1), data['vectors_thematic'][idxi].reshape(1, -1))[0][0] < 0.40:
-                    intruder = ti; break
+        if 'vectors_thematic' in data:
+            for _ in range(30):
+                ti = random.choice(valid_titles)
+                if ti not in [t1, t2]:
+                    idxi = data['title_to_index'][ti]
+                    if cosine_similarity(data['vectors_thematic'][idx1].reshape(1, -1), data['vectors_thematic'][idxi].reshape(1, -1))[0][0] < 0.40:
+                        intruder = ti; break
         if not intruder: intruder = random.choice(valid_titles)
         item1, item2 = data['title_to_full_data'][t1], data['title_to_full_data'][t2]
         scenario_data = {"scenario": "Erreur génération."}
         if langchain_service:
             scenario_data = langchain_service.generate_scenario_advanced(media_type, item1, item2, "Français")
-        options = [t1, t2, intruder]
+        options = []
+        for t in [t1, t2, intruder]:
+            obj = data['title_to_full_data'][t]
+            options.append({
+                'title': t,
+                'title_english': obj.get('title_english'),
+                'title_native': obj.get('title_native'),
+                'image': obj.get('image')
+            })
         random.shuffle(options)
+        
         request.session['paradox_answer'] = intruder
         request.session['paradox_media'] = media_type
         return render(request, 'animetix/paradox/intruder.html', {
@@ -351,11 +369,14 @@ def undercover_party_play(request):
         idx_civil = data['title_to_index'][civil_title]
         
         # Similarité thématique pour trouver l'Undercover
-        similarities = cosine_similarity(data['vectors_thematic'][idx_civil].reshape(1, -1), data['vectors_thematic'])[0]
-        thresholds = {"Easy": (0.35, 0.60), "Normal": (0.65, 0.85), "Hard": (0.86, 0.98)}
-        low, high = thresholds.get(difficulty, thresholds["Normal"])
+        if 'vectors_thematic' in data:
+            similarities = cosine_similarity(data['vectors_thematic'][idx_civil].reshape(1, -1), data['vectors_thematic'])[0]
+            thresholds = {"Easy": (0.35, 0.60), "Normal": (0.65, 0.85), "Hard": (0.86, 0.98)}
+            low, high = thresholds.get(difficulty, thresholds["Normal"])
+            candidates = [i for i, s in enumerate(similarities) if low <= s <= high and data['titles'][i] != civil_title]
+        else:
+            candidates = []
         
-        candidates = [i for i, s in enumerate(similarities) if low <= s <= high and data['titles'][i] != civil_title]
         undercover_title = data['titles'][random.choice(candidates)] if candidates else random.choice(valid_titles)
         
         civil_obj = data['title_to_full_data'][civil_title]
