@@ -3,6 +3,7 @@ import json
 import os
 import random
 import torch
+import requests
 from sklearn.metrics.pairwise import cosine_similarity
 from django.conf import settings
 from transformers import AutoProcessor, AutoModelForCausalLM, BitsAndBytesConfig
@@ -95,14 +96,15 @@ class AnimetixService:
                 "db": json.load(open(db_path, encoding='utf-8')),
             }
             
-            # OPTIMISATION HYBRIDE : On ne charge les vecteurs QUE si on n'utilise pas l'API Brain
-            if not os.getenv("BRAIN_API_URL"):
-                print(f"🧠 Loading vectors locally for {media_type}...")
-                self.data[media_type]["vectors_thematic"] = np.load(os.path.join(base_path, config["thematic"]), mmap_mode='r')
-                self.data[media_type]["vectors_plot"] = np.load(os.path.join(base_path, config["plot"]), mmap_mode='r')
-                self.data[media_type]["vectors_vibe"] = np.load(os.path.join(base_path, config["vibe"]), mmap_mode='r')
-            else:
-                print(f"🌐 Using Remote Brain for {media_type} vectors.")
+            # On charge TOUJOURS les vecteurs localement en mmap (très léger en RAM)
+            # Cela permet aux modes Paradox et Undercover de fonctionner instantanément
+            print(f"🧠 Loading vectors in memory-map mode for {media_type}...")
+            self.data[media_type]["vectors_thematic"] = np.load(os.path.join(base_path, config["thematic"]), mmap_mode='r')
+            self.data[media_type]["vectors_plot"] = np.load(os.path.join(base_path, config["plot"]), mmap_mode='r')
+            self.data[media_type]["vectors_vibe"] = np.load(os.path.join(base_path, config["vibe"]), mmap_mode='r')
+            
+            if os.getenv("BRAIN_API_URL"):
+                print(f"🌐 Remote Brain enabled for LLM tasks.")
 
             d = self.data[media_type]
             # On standardise : 'title' est la clé de référence
@@ -187,20 +189,23 @@ class LangChainService:
         return res if res else "Mystère..."
 
     def explain_undercover(self, maj_titles, maj_tags, intruder_title, intruder_tags, language):
-        parser = JsonOutputParser(pydantic_object=ExplanationOutput)
-        icon = self._get_icon()
-        prompt = ChatPromptTemplate.from_template("""
-        Groupe: {maj_titles}. Intrus: {intruder_title}. 
-        Réponds UNIQUEMENT avec un objet JSON au format suivant:
+        icon = "🦙"
+        prompt = f"""
+        Groupe d'entités : {', '.join(maj_titles)}. 
+        L'intrus : {intruder_title}.
+        
+        Explique brièvement pourquoi c'est l'intrus.
+        Réponds UNIQUEMENT au format JSON suivant :
         {{
-            "reasoning": "Analyse thématique ({icon})",
+            "reasoning": "Analyse thématique {icon}",
             "explanation": "ton explication courte en {language}"
         }}
-        """)
-        chain = prompt | self.llm | parser
-        try:
-            return self._fix_nested_json(chain.invoke({
-                "maj_titles": ", ".join(maj_titles), "intruder_title": intruder_title,
-                "language": language, "icon": icon
-            }))
-        except: return {"reasoning": f"Error {icon}", "explanation": "Analyse non disponible."}
+        """
+        res_text = self._generate_via_brain(prompt, "Tu es un expert en analyse d'animés.")
+        if res_text:
+            try:
+                json_match = re.search(r'\{.*\}', res_text, re.DOTALL)
+                if json_match:
+                    return json.loads(json_match.group(0))
+            except: pass
+        return {"reasoning": f"Erreur {icon}", "explanation": "Analyse non disponible."}

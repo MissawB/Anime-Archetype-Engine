@@ -203,30 +203,31 @@ def make_guess(request):
         secret_full = data['title_to_full_data'][secret_title]
         guess_full = data['title_to_full_data'][guess_title]
         
-        # 1. Similarité de base (Vectorielle)
+        # --- CALCUL DE SIMILARITÉ ---
+        # On utilise le Brain si disponible, sinon local (Fallback)
         vec_sim = get_similarity_score(media_type, secret_idx, guess_idx, data)
 
         if media_type == 'Character':
-            # 2. Bonus Organisation - 15%
+            # Bonus Organisation - 15%
             org_S = set(secret_full.get('organizations', []))
             org_G = set(guess_full.get('organizations', []))
             org_sim = 1.0 if len(org_S.intersection(org_G)) > 0 else 0.0
             
-            # 3. Bonus Liens - 15%
+            # Bonus Liens - 15%
             rel_S = set(secret_full.get('related', []))
             rel_G = set(guess_full.get('related', []))
             is_linked = secret_full['title'].lower() in rel_G or guess_full['title'].lower() in rel_S
             link_sim = 1.0 if is_linked else (0.5 if len(rel_S.intersection(rel_G)) > 0 else 0.0)
             
-            # 4. Bonus Taille - 10%
+            # Bonus Taille - 10%
             hS, hG = secret_full.get('height_cm', 0), guess_full.get('height_cm', 0)
             height_sim = max(0, 1 - (abs(hS - hG) / 25)) if hS > 0 and hG > 0 else 0
             
             raw_sim = (0.6 * vec_sim) + (0.15 * org_sim) + (0.15 * link_sim) + (0.1 * height_sim)
         else:
-            # Logique Anime/Manga avec Recommandations
+            # Logique Anime/Manga avec Recommandations et Plot
             sim_thematic = vec_sim
-            sim_plot = float(cosine_similarity(data['vectors_plot'][secret_idx].reshape(1, -1), data['vectors_plot'][guess_idx].reshape(1, -1))[0][0]) if 'vectors_plot' in data else vec_sim
+            sim_plot = float(cosine_similarity(data['vectors_plot'][secret_idx].reshape(1, -1), data['vectors_plot'][guess_idx].reshape(1, -1))[0][0])
             
             rec_rating = 0
             if guess_title in secret_full.get('recommendations', {}):
@@ -242,10 +243,8 @@ def make_guess(request):
             else:
                 raw_sim = (0.80 * sim_thematic + 0.20 * sim_plot)
 
-        def cémantix_scale(x):
-            # On ajuste la puissance pour rendre la progression plus ou moins difficile
-            return np.sign(x) * pow(abs(x), 4) * 100
-        final_score = round(cémantix_scale(raw_sim), 2)
+        # Mise à l'échelle Cémantix
+        final_score = round(np.sign(raw_sim) * pow(abs(raw_sim), 4) * 100, 2)
 
         if final_score > 95: temperature = "BRÛLANT 🔥"; color = "danger"
         elif final_score > 75: temperature = "Chaud ☀️"; color = "warning"

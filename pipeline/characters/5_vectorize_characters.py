@@ -23,8 +23,8 @@ lookup_data = []
 print("🔍 Encodage et préparation des données de jeu...")
 for char in chars_db:
     # 1. Texte enrichi pour l'embedding
-    title = char['title']
-    bio = char['biography']
+    title = char.get('title') or char.get('name') or "Unknown"
+    bio = char.get('biography', '')
     meta = char.get('metadata', {})
     entities = char.get('entities', {})
     

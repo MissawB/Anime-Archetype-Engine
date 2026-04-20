@@ -44,7 +44,7 @@ with open(INPUT_FILE, 'r', encoding='utf-8') as f:
 
 train_examples = []
 for char in data:
-    name = char['name']
+    title = char.get('title') or char.get('name') or "Unknown"
     bio = char.get('biography', '')
     meta = char.get('metadata', {})
     entities = char.get('entities', {})
@@ -54,11 +54,11 @@ for char in data:
     if orgs or traits:
         attributes_text = f"{', '.join(traits)}. Affiliations: {', '.join(orgs)}."
         if len(attributes_text) > 10:
-            train_examples.append(InputExample(texts=[attributes_text, name]))
+            train_examples.append(InputExample(texts=[attributes_text, title]))
             
     if len(bio) > 50:
         bio_snippet = bio[:300]
-        train_examples.append(InputExample(texts=[bio_snippet, name]))
+        train_examples.append(InputExample(texts=[bio_snippet, title]))
 
 if len(train_examples) < 20:
     print("Pas assez d'exemples d'entraînement.")
