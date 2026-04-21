@@ -71,7 +71,6 @@ jobs:
           WORKDIR /app
           RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
           COPY requirements.txt .
-          # On filtre requirements.txt pour enlever les libs lourdes avant l'install
           RUN sed -i '/torch/d' requirements.txt && \
               sed -i '/transformers/d' requirements.txt && \
               sed -i '/sentence-transformers/d' requirements.txt && \
@@ -79,8 +78,9 @@ jobs:
               sed -i '/bitsandbytes/d' requirements.txt && \
               pip install --no-cache-dir -r requirements.txt gunicorn
           COPY . .
-          # On s'assure que les dossiers existent
           RUN mkdir -p data/artifacts data/processed
+          # On s'assure que la DB est prête pour les sessions
+          RUN python backend/manage.py migrate
           EXPOSE 7860
           CMD [\\\"gunicorn\\\", \\\"--bind\\\", \\\"0.0.0.0:7860\\\", \\\"--workers\\\", \\\"2\\\", \\\"--timeout\\\", \\\"120\\\", \\\"animetix_project.wsgi:application\\\"]
           \"\"\"

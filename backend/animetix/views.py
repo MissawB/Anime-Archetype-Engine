@@ -79,6 +79,10 @@ def game_view(request):
     if not media_type: return redirect('index')
         
     data = animetix_service.load_data(media_type)
+    if not data:
+        print(f"❌ Critical Error: Data for {media_type} could not be loaded in game_view.")
+        return redirect('index')
+        
     difficulty = request.session.get('difficulty', 'Normal')
     rank_limit = DIFFICULTY_SETTINGS[difficulty]['rank_limit']
     
