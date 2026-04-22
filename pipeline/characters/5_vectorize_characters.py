@@ -17,6 +17,11 @@ FT_MODEL_PATH = os.path.join(BASE_DIR, 'data', 'models', 'character-vibe-model')
 with open(INPUT_PATH, 'r', encoding='utf-8') as f:
     chars_db = json.load(f)
 
+# v91.6 FIX : On trie la DB par popularité AVANT toute opération
+# Cela garantit que l'index 0 est le plus populaire, le 100ème est le 100ème populaire, etc.
+print("📊 Tri des personnages par popularité...")
+chars_db.sort(key=lambda x: x.get('popularity', {}).get('favourites', 0), reverse=True)
+
 corpus = []
 lookup_data = []
 
@@ -31,11 +36,11 @@ for char in chars_db:
     orgs = meta.get('affiliations', []) + entities.get('organizations', [])
     related = entities.get('related_characters', [])
     
+    # Texte complet pour la 'vibe' sémantique
     rich_text = f"Character: {title}. Orgs: {' '.join(orgs)}. Links: {' '.join(related)}. {bio}"
     corpus.append(rich_text)
     
-    # 2. Données de comparaison pour Django
-    # On normalise la taille en nombre pour le calcul
+    # 2. Données de comparaison structurées
     h_str = meta.get('height', '0')
     h_val = 0
     h_match = re.search(r'(\d+)', str(h_str))
@@ -51,12 +56,13 @@ for char in chars_db:
         "height_cm": h_val
     })
 
-print("🧠 Calcul des vecteurs...")
+print(f"🧠 Calcul des vecteurs pour {len(corpus)} personnages...")
 model = SentenceTransformer(FT_MODEL_PATH if os.path.exists(FT_MODEL_PATH) else 'all-mpnet-base-v2')
 vectors = model.encode(corpus, show_progress_bar=True)
 
+# Sauvegarde synchronisée
 np.save(OUTPUT_VECTORS_PATH, vectors)
 with open(OUTPUT_LOOKUP_PATH, 'w', encoding='utf-8') as f:
     json.dump(lookup_data, f, indent=2, ensure_ascii=False)
 
-print("✅ Artifacts mis à jour avec données structurées !")
+print("✅ Artifacts synchronisés et triés par popularité !")

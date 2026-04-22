@@ -4,6 +4,8 @@ from . import views
 urlpatterns = [
     path('', views.index, name='index'),
     path('switch_mode/<str:mode>/', views.switch_mode, name='switch_mode'),
+    path('switch_lang/<str:lang>/', views.switch_language, name='switch_lang'),
+    path('switch_diff/<str:diff>/', views.switch_difficulty, name='switch_diff'),
     path('start_game/', views.start_game, name='start_game'),
     path('game/', views.game_view, name='game'),
     path('game/abandon/', views.abandon_game, name='abandon_game'),

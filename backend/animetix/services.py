@@ -148,44 +148,84 @@ class LangChainService:
             print(f"Brain LLM Error: {e}")
         return None
 
-    def generate_scenario_advanced(self, media_type, item_A, item_B, language):
-        icon = "🦙" # Llama est maintenant le standard
+    def _safe_json_parse(self, text, default_reasoning="Analyse Indisponible", default_scenario="..."):
+        """Extrait les champs avec une tolérance maximale aux erreurs de format."""
+        if not text:
+            return {"reasoning": default_reasoning, "scenario": default_scenario}
         
-        # Préparation du contexte (identique au précédent)
-        if media_type == 'Character':
-            label_A, label_B = item_A['title'], item_B['title']
-            context_A, context_B = item_A.get('description', ''), item_B.get('description', '')
-        else:
-            label_A, label_B = item_A['title'], item_B['title']
-            context_A = f"{item_A.get('description', '')}"
-            context_B = f"{item_B.get('description', '')}"
+        # 1. Tentative JSON Standard
+        try:
+            clean_json = text[text.find('{'):text.rfind('}')+1]
+            # On répare les sauts de ligne internes
+            clean_json = clean_json.replace('\n', ' ').replace('\r', ' ')
+            parsed = json.loads(clean_json)
+            r = parsed.get('reasoning') or parsed.get('explanation')
+            s = parsed.get('scenario') or parsed.get('synopsis')
+            if r and s: return {"reasoning": r, "scenario": s}
+        except: pass
 
-        system_prompt = f"Tu es un expert Concept Creator spécialisé en {media_type}. Réponds UNIQUEMENT en JSON."
-        user_prompt = f"""
-        MISSION : Fusionne ces deux entités :
-        1. {label_A} : {context_A[:800]}
-        2. {label_B} : {context_B[:800]}
+        # 2. Tentative par REGEX (plus robuste si guillemets manquants ou mal échappés)
+        r_match = re.search(r'["\']?reasoning["\']?\s*:\s*["\'](.*?)["\'](?=,|$|\s*})', text, re.DOTALL | re.IGNORECASE)
+        s_match = re.search(r'["\']?scenario["\']?\s*:\s*["\'](.*?)["\'](?=,|$|\s*})', text, re.DOTALL | re.IGNORECASE)
         
-        Format JSON STRICT :
+        reasoning = r_match.group(1) if r_match else ""
+        scenario = s_match.group(1) if s_match else ""
+
+        # 3. Tentative par détection de texte brut (si l'IA n'a pas mis de JSON du tout)
+        if not reasoning or len(reasoning) < 5:
+            if "parce que" in text.lower() or "commun" in text.lower():
+                reasoning = text[:300].split('}')[0].strip(' "{}\n')
+            else:
+                reasoning = default_reasoning
+
+        if not scenario or len(scenario) < 10:
+            scenario = text.split('scenario')[-1].strip(' ":{}\n') if 'scenario' in text else text
+
+        return {
+            "reasoning": reasoning.replace('\\n', '\n').replace('\\"', '"').strip(),
+            "scenario": scenario.replace('\\n', '\n').replace('\\"', '"').strip()
+        }
+
+    def generate_scenario_advanced(self, media_type, item_A, item_B, language):
+        icon = "🦙"
+        label_A = item_A.get('title') or item_A.get('name') or "Entité A"
+        label_B = item_B.get('title') or item_B.get('name') or "Entité B"
+        
+        system_prompt = f"Tu es un expert Concept Creator spécialisé en {media_type}. Réponds UNIQUEMENT par un objet JSON."
+        user_prompt = f"""
+        MISSION : Fusionne l'univers de {label_A} et {label_B}.
+        LANGUE : {language}. Pas de noms cités. 
+        JSON STRICT: {{"reasoning": "logique {icon}", "scenario": "histoire"}}
+        """
+        res_text = self._generate_via_brain(user_prompt, system_prompt)
+        return self._safe_json_parse(res_text, f"Analyse Llama {icon}", "Fusion en cours...")
+
+    def generate_paradox_logic(self, media_type, item_A, item_B, item_I, language):
+        """Analyse le lien entre A/B et pourquoi I est l'intrus."""
+        icon = "🧩"
+        label_A = item_A.get('title') or item_A.get('name')
+        label_B = item_B.get('title') or item_B.get('name')
+        label_I = item_I.get('title') or item_I.get('name')
+        
+        system_prompt = f"Tu es un expert Concept Creator. Ta mission est d'expliquer pourquoi '{label_I}' est l'intrus par rapport à '{label_A}' et '{label_B}'."
+        user_prompt = f"""
+        ANALYSE CES 3 ÉLÉMENTS :
+        1. '{label_A}' : {item_A.get('description', '')[:200]}
+        2. '{label_B}' : {item_B.get('description', '')[:200]}
+        3. INTRUS : '{label_I}' : {item_I.get('description', '')[:200]}
+        
+        MISSION :
+        - Dans "reasoning" : Explique spécifiquement pourquoi '{label_A}' et '{label_B}' sont similaires et pourquoi '{label_I}' est différent.
+        - Dans "scenario" : Décris le point commun de '{label_A}' et '{label_B}' sans les nommer.
+        
+        RÉPONDS UNIQUEMENT AU FORMAT JSON :
         {{
-            "reasoning": "2 points techniques + {icon}",
-            "scenario": "Synopsis en {language} (sans citer les noms)."
+            "reasoning": "Ton explication ici {icon}",
+            "scenario": "Ton synopsis ici"
         }}
         """
-        
         res_text = self._generate_via_brain(user_prompt, system_prompt)
-        if res_text:
-            try:
-                # On tente de parser le JSON renvoyé par Llama
-                import json
-                # Nettoyage si Llama ajoute du texte autour du JSON
-                json_match = re.search(r'\{.*\}', res_text, re.DOTALL)
-                if json_match:
-                    return json.loads(json_match.group(0))
-            except: pass
-            return {"reasoning": f"Llama 3.2 {icon}", "scenario": res_text}
-            
-        return {"reasoning": "Fallback", "scenario": "L'IA est indisponible."}
+        return self._safe_json_parse(res_text, f"L'IA n'a pas pu justifier ce choix. {icon}", res_text)
 
     def generate_undercover_clue(self, media_type, item_A, item_B, language):
         prompt = f"Donne un seul mot-clé thématique commun à ces deux {media_type} : '{item_A}' et '{item_B}'. Ne cite aucun nom."

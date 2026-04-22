@@ -7,16 +7,12 @@
 <div class="row">
     <div class="col-md-8 offset-md-2">
         <h2 class="text-center mb-4">Animetix ({{ media_type }} Edition)</h2>
-        <p class="text-center text-muted mb-4">
-            Trouvez {% if media_type == 'Character' %}le personnage secret{% else %}l'œuvre secrète{% endif %} ! 
-            Utilisez vos essais pour débloquer des indices stratégiques.
-        </p>
 
         {% if game_over %}
-        <div class="alert alert-success text-center py-4 mb-4 shadow">
-            <h1 class="display-4">🎉 RÉVÉLATION !</h1>
-            <p class="lead">{% if media_type == 'Character' %}Le personnage secret était{% else %}L'œuvre secrète était{% endif %} <strong>{{ secret_data.title }}</strong></p>
-            <a href="{% url 'index' %}" class="btn btn-primary btn-lg mt-3">Retour à l'accueil</a>
+        <div class="alert alert-success text-center py-4 mb-4 shadow" style="border-radius: 20px;">
+            <h1 class="display-4">🎉 {% if guesses.0.title == secret_title %}{{ txt.game_over_win }}{% else %}{{ txt.game_over_loss }}{% endif %}</h1>
+            <p class="lead"><strong>{{ secret_data.title }}</strong></p>
+            <a href="{% url 'index' %}" class="btn btn-primary btn-lg mt-3">{{ txt.btn_back }}</a>
         </div>
 
         <div class="card mb-5 shadow border-0 overflow-hidden" style="border-radius: 25px;">
@@ -30,19 +26,19 @@
                     <div class="card-body p-4">
                         <h5 class="card-title h3">{{ secret_data.title }} 
                             {% if media_type == 'Character' %}
-                            <small class="text-muted fs-6 d-block">Origine : {{ secret_data.origin }}</small>
+                            <small class="text-muted fs-6 d-block">{{ txt.hint_origin }} : {{ secret_data.origin }}</small>
                             {% elif secret_data.year %}
                             ({{ secret_data.year }})
                             {% endif %}
                         </h5>
                         <div class="mb-3">
                             {% if media_type == 'Character' %}
-                                {% if secret_data.metadata.height %}<span class="badge bg-info text-dark">📏 {{ secret_data.metadata.height }}</span>{% endif %}
-                                {% for aff in secret_data.metadata.affiliations %}<span class="badge bg-primary">🛡️ {{ aff }}</span>{% endfor %}
+                                {% if secret_data.metadata.height %}<span class="badge bg-primary">📏 {{ secret_data.metadata.height }}</span>{% endif %}
+                                {% for aff in secret_data.metadata.affiliations %}<span class="badge bg-primary opacity-75">🛡️ {{ aff }}</span>{% endfor %}
                                 {% for rel in secret_data.entities.related_characters|slice:":5" %}<span class="badge bg-dark">👥 {{ rel }}</span>{% endfor %}
                             {% else %}
                                 {% for tag in secret_data.tags|slice:":10" %}
-                                <span class="badge bg-secondary opacity-75">{{ tag }}</span>
+                                <span class="badge bg-primary opacity-75">{{ tag }}</span>
                                 {% endfor %}
                             {% endif %}
                         </div>
@@ -54,118 +50,111 @@
         </div>
         {% else %}
         
-        <!-- DASHBOARD DES INDICES -->
-        <div class="card p-4 mb-4 shadow-sm border-0 bg-white" style="border-radius: 20px;">
-            <h5 class="mb-3">💡 Tableau des Indices :</h5>
-            <div class="row g-2">
+        <!-- BARRE DE RECHERCHE -->
+        <div class="card shadow-sm mb-5 p-4" style="border-radius: 20px; border: none; position: relative;">
+            <form action="{% url 'make_guess' %}" method="post">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input type="text" id="guess-input" name="guess" class="form-control form-control-lg border-0 shadow-none bg-transparent" placeholder="{{ txt.placeholder_guess }}" autocomplete="off" style="color: inherit; height: 60px;">
+                    <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold" style="border-radius: 0 15px 15px 0; height: 60px;">{{ txt.btn_guess }}</button>
+                </div>
+                <div id="autocomplete-results" class="list-group position-absolute w-100 mt-1 shadow-lg" style="z-index: 1000; left: 0; right: 0; top: 100%; border-radius: 15px; overflow: hidden; display: none; background: var(--card-bg); border: 1px solid rgba(0,0,0,0.1);">
+                </div>
+            </form>
+        </div>
+
+        <!-- DASHBOARD DES INDICES UNIFORMISÉ -->
+        <div class="card p-4 mb-4 shadow-sm border-0" style="border-radius: 20px;">
+            <h5 class="mb-4">💡 {{ txt.hints_available }} :</h5>
+            <div class="row g-3">
                 <!-- Image floutée -->
                 <div class="col-md-6 col-lg-4">
                     {% if hints.poster.revealed %}
-                        <div class="text-center p-2 border rounded bg-light">
-                            <img src="{{ hints.poster.value }}" class="rounded shadow-sm" style="height: 120px; width: 85px; object-fit: cover; filter: blur(15px);">
-                            <div class="small mt-1 text-muted">{% if media_type == 'Character' %}Portrait Flouté{% else %}Affiche Floutée{% endif %}</div>
+                        <div class="text-center p-3 border rounded shadow-sm" style="background: rgba(var(--bs-primary-rgb), 0.05);">
+                            <img src="{{ hints.poster.value }}" class="rounded shadow-sm mb-2" style="height: 120px; width: 85px; object-fit: cover; filter: blur(15px);">
+                            <div class="small fw-bold">{{ txt.hint_poster }}</div>
                         </div>
                     {% else %}
-                        <a href="{% url 'reveal_hint' 'poster' %}" class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center align-items-center py-3">
-                            <span class="fs-3">🖼️</span>
-                            <span class="small">Image (Gratuit)</span>
+                        <a href="{% url 'reveal_hint' 'poster' %}" class="btn btn-outline-primary w-100 h-100 py-4 d-flex flex-column align-items-center">
+                            <i class="bi bi-image fs-3 mb-2"></i>
+                            <span class="small">{{ txt.btn_reveal }}</span>
                         </a>
                     {% endif %}
                 </div>
 
                 <!-- Recommandation / Similitude -->
                 <div class="col-md-6 col-lg-4">
-                    {% if hints.rec or hints.sim %}
-                        {% with h=hints.rec|default:hints.sim %}
-                        {% if h.revealed %}
-                            <div class="alert alert-info py-3 mb-0 text-center border-0 shadow-sm h-100 d-flex align-items-center justify-content-center">
-                                <strong>🔗 {{ h.value }}</strong>
-                            </div>
-                        {% else %}
-                            <button onclick="confirmHint('{{ hints.rec|yesno:'rec,sim' }}', '{% if media_type == 'Character' %}Voir un personnage similaire ?{% else %}Voir une œuvre similaire ?{% endif %}')" class="btn btn-outline-primary w-100 h-100 py-3 {% if h.locked %}disabled{% endif %}">
-                                <span class="fs-3">🔗</span>
-                                <span class="small">{% if media_type == 'Character' %}Similaire{% else %}Œuvre Proche{% endif %} (10+)</span>
-                            </button>
-                        {% endif %}
-                        {% endwith %}
+                    {% with h=hints.rec|default:hints.sim %}
+                    {% if h.revealed %}
+                        <div class="alert alert-primary p-3 mb-0 text-center border-0 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center">
+                            <span class="small opacity-75 mb-1">{% if media_type == 'Character' %}{{ txt.hint_sim }}{% else %}{{ txt.hint_rec }}{% endif %}</span>
+                            <strong>{{ h.value }}</strong>
+                        </div>
+                    {% else %}
+                        <button onclick="confirmHint('{{ hints.rec|yesno:'rec,sim' }}', '{% if media_type == 'Character' %}{{ txt.hint_sim }} ?{% else %}{{ txt.hint_rec }} ?{% endif %}')" class="btn btn-outline-primary w-100 h-100 py-4 d-flex flex-column align-items-center {% if h.locked %}disabled{% endif %}">
+                            <i class="bi bi-link-45deg fs-3 mb-2"></i>
+                            <span class="small">Similar (10+)</span>
+                        </button>
                     {% endif %}
+                    {% endwith %}
                 </div>
 
                 <!-- Personnages OU Origine -->
                 <div class="col-md-6 col-lg-4">
-                    {% if hints.chars or hints.origin %}
-                        {% with h=hints.chars|default:hints.origin %}
-                        {% if h.revealed %}
-                            <div class="alert alert-warning py-3 mb-0 text-center border-0 shadow-sm h-100 d-flex align-items-center justify-content-center">
-                                <strong>{% if media_type == 'Character' %}🏛️ {{ h.value }}{% else %}👥 {{ h.value|join:", " }}{% endif %}</strong>
-                            </div>
-                        {% else %}
-                            <button onclick="confirmHint('{{ hints.chars|yesno:'chars,origin' }}', '{% if media_type == 'Character' %}Révéler l\'œuvre d\'origine ?{% else %}Révéler deux personnages ?{% endif %}')" class="btn btn-outline-warning w-100 h-100 py-3 {% if h.locked %}disabled{% endif %}">
-                                <span class="fs-3">{% if media_type == 'Character' %}🏛️{% else %}👥{% endif %}</span>
-                                <span class="small">{% if media_type == 'Character' %}Origine{% else %}Persos{% endif %} (15+)</span>
-                            </button>
-                        {% endif %}
-                        {% endwith %}
+                    {% with h=hints.chars|default:hints.origin %}
+                    {% if h.revealed %}
+                        <div class="alert alert-primary p-3 mb-0 text-center border-0 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center">
+                            <span class="small opacity-75 mb-1">{% if media_type == 'Character' %}{{ txt.hint_origin }}{% else %}{{ txt.hint_chars }}{% endif %}</span>
+                            <strong>{% if media_type == 'Character' %}{{ h.value }}{% else %}{{ h.value|join:", " }}{% endif %}</strong>
+                        </div>
+                    {% else %}
+                        <button onclick="confirmHint('{{ hints.chars|yesno:'chars,origin' }}', '{% if media_type == 'Character' %}{{ txt.hint_origin }} ?{% else %}{{ txt.hint_chars }} ?{% endif %}')" class="btn btn-outline-primary w-100 h-100 py-4 d-flex flex-column align-items-center {% if h.locked %}disabled{% endif %}">
+                            <i class="bi bi-people-fill fs-3 mb-2"></i>
+                            <span class="small">Origin (15+)</span>
+                        </button>
                     {% endif %}
+                    {% endwith %}
                 </div>
 
                 <!-- Mots Rares -->
                 <div class="col-md-6 col-lg-4">
-                    {% if hints.words %}
-                        {% if hints.words.revealed %}
-                            <div class="alert alert-success py-3 mb-0 text-center border-0 shadow-sm h-100 d-flex align-items-center justify-content-center">
-                                <span class="badge bg-success me-1">{{ hints.words.value.0 }}</span>
-                                <span class="badge bg-success">{{ hints.words.value.1 }}</span>
+                    {% if hints.words.revealed %}
+                        <div class="alert alert-primary p-3 mb-0 text-center border-0 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center">
+                            <span class="small opacity-75 mb-1">{{ txt.hint_words }}</span>
+                            <div>
+                                <span class="badge bg-primary me-1">{{ hints.words.value.0 }}</span>
+                                <span class="badge bg-primary">{{ hints.words.value.1 }}</span>
                             </div>
-                        {% else %}
-                            <button onclick="confirmHint('words', 'Révéler deux mots-clés de la description ?')" class="btn btn-outline-success w-100 h-100 py-3 {% if hints.words.locked %}disabled{% endif %}">
-                                <span class="fs-3">🔑</span>
-                                <span class="small">Mots-clés (20+)</span>
-                            </button>
-                        {% endif %}
+                        </div>
+                    {% else %}
+                        <button onclick="confirmHint('words', '{{ txt.hint_words }} ?')" class="btn btn-outline-primary w-100 h-100 py-4 d-flex flex-column align-items-center {% if hints.words.locked %}disabled{% endif %}">
+                            <i class="bi bi-key-fill fs-3 mb-2"></i>
+                            <span class="small">Words (20+)</span>
+                        </button>
                     {% endif %}
                 </div>
 
                 <!-- Vibe IA -->
                 <div class="col-md-6 col-lg-4">
-                    {% if hints.vibe %}
-                        {% if hints.vibe.revealed %}
-                            <div class="alert alert-danger py-2 mb-0 small border-0 shadow-sm h-100 d-flex align-items-center">
-                                <em>"{{ hints.vibe.value }}"</em>
-                            </div>
-                        {% else %}
-                            <button onclick="confirmHint('vibe', 'Générer un indice sur l\'ambiance avec l\'IA ?')" class="btn btn-outline-danger w-100 h-100 py-3 {% if hints.vibe.locked %}disabled{% endif %}">
-                                <span class="fs-3">🔮</span>
-                                <span class="small">Vibe IA (25+)</span>
-                            </button>
-                        {% endif %}
+                    {% if hints.vibe.revealed %}
+                        <div class="alert alert-primary p-3 mb-0 text-center border-0 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center">
+                            <span class="small opacity-75 mb-1">{{ txt.hint_vibe }}</span>
+                            <em class="small">"{{ hints.vibe.value }}"</em>
+                        </div>
+                    {% else %}
+                        <button onclick="confirmHint('vibe', '{{ txt.hint_vibe }} ?')" class="btn btn-outline-primary w-100 h-100 py-4 d-flex flex-column align-items-center {% if hints.vibe.locked %}disabled{% endif %}">
+                            <i class="bi bi-magic fs-3 mb-2"></i>
+                            <span class="small">Vibe (25+)</span>
+                        </button>
                     {% endif %}
                 </div>
             </div>
         </div>
-
-        <div class="card p-4 mb-5 shadow-sm border-0" style="border-radius: 20px;">
-            <form action="{% url 'make_guess' %}" method="post">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label h5 fw-bold">Votre prochain essai :</label>
-                    <select id="title-search" name="guess" placeholder="Tapez un nom..." autocomplete="off">
-                        <option value=""></option>
-                        {% for item in remaining_items %}
-                        <option value="{{ item.title }}" data-src="{{ item.image }}" data-english="{{ item.title_english }}" data-native="{{ item.title_native }}">
-                            {{ item.title }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary btn-lg w-100 shadow">Tenter ma chance !</button>
-            </form>
-        </div>
         {% endif %}
 
-        <h4 class="mb-3">Historique des essais :</h4>
+        <h4 class="mb-3">{{ txt.table_guess }} :</h4>
         {% if not guesses %}
-        <div class="alert alert-light border text-center">Commencez à deviner pour voir votre progression.</div>
+        <div class="alert alert-light border text-center opacity-50">...</div>
         {% else %}
         <div class="list-group shadow-sm mb-5">
             {% for guess in guesses %}
@@ -180,8 +169,7 @@
                 <div class="progress shadow-sm" style="height: 14px; background-color: #e9ecef; border-radius: 10px;">
                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-{{ guess.color }}" 
                          role="progressbar" 
-                         style="width: {{ guess.score }}%" 
-                         aria-valuenow="{{ guess.score }}" aria-valuemin="0" aria-valuemax="100">
+                         style="width: {{ guess.score }}%">
                     </div>
                 </div>
             </div>
@@ -190,13 +178,21 @@
         {% endif %}
 
         <div class="text-center mt-5 mb-5">
-            <hr class="w-25 mx-auto opacity-25">
-            <a href="{% url 'abandon_game' %}" class="btn btn-link text-danger text-decoration-none" onclick="return confirm('Abandonner la partie et voir la réponse ?')">
-                 🏳️ Je donne ma langue au chat (Abandonner)
+            <a href="{% url 'abandon_game' %}" class="btn btn-link text-danger text-decoration-none" onclick="return confirm('{{ txt.btn_abandon }} ?')">
+                 🏳️ {{ txt.btn_abandon }}
             </a>
         </div>
     </div>
 </div>
+
+<!-- Données pour l'autocomplétion -->
+<script id="items-data" type="application/json">
+    [
+    {% for item in remaining_items %}
+        {"t": "{{ item.title|escapejs }}", "e": "{{ item.title_english|escapejs }}", "n": "{{ item.title_native|escapejs }}", "i": "{{ item.image|escapejs }}"}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+    ]
+</script>
 
 <script>
     function confirmHint(type, message) {
@@ -206,28 +202,52 @@
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        if (document.getElementById('title-search')) {
-            new TomSelect("#title-search", {
-                create: false,
-                valueField: 'value',
-                labelField: 'text',
-                searchField: ['text', 'english', 'native'],
-                maxOptions: 50,
-                render: {
-                    option: function(data, escape) {
-                        return `<div class="d-flex align-items-center py-1">
-                            <div class="me-2" style="width: 40px; height: 55px; flex-shrink: 0;">
-                                <img src="${escape(data.src)}" class="rounded w-100 h-100" style="object-fit: cover;" onerror="this.src='https://via.placeholder.com/40x55?text=?'">
-                            </div>
-                            <div class="flex-grow-1 overflow-hidden">
-                                <div class="fw-bold text-truncate">${escape(data.text)}</div>
-                                <div class="text-muted small text-truncate">${data.english ? escape(data.english) : ''}</div>
-                            </div>
-                        </div>`;
-                    }
-                }
-            });
-        }
+        const input = document.getElementById('guess-input');
+        const results = document.getElementById('autocomplete-results');
+        const allItems = JSON.parse(document.getElementById('items-data').textContent);
+
+        input.addEventListener('input', function() {
+            const val = this.value.toLowerCase();
+            results.innerHTML = '';
+            
+            if (val.length < 2) {
+                results.style.display = 'none';
+                return;
+            }
+
+            const filtered = allItems.filter(item => 
+                item.t.toLowerCase().includes(val) || 
+                item.e.toLowerCase().includes(val) || 
+                item.n.toLowerCase().includes(val)
+            ).slice(0, 10);
+
+            if (filtered.length > 0) {
+                filtered.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'list-group-item list-group-item-action d-flex align-items-center border-0 py-2';
+                    div.style.cursor = 'pointer';
+                    div.innerHTML = `
+                        <img src="${item.i}" style="width: 40px; height: 55px; object-fit: cover; border-radius: 5px;" class="me-3">
+                        <div class="overflow-hidden">
+                            <div class="fw-bold text-truncate">${item.t}</div>
+                            <div class="text-muted small text-truncate">${item.e || ''}</div>
+                        </div>
+                    `;
+                    div.onclick = function() {
+                        input.value = item.t;
+                        results.style.display = 'none';
+                    };
+                    results.appendChild(div);
+                });
+                results.style.display = 'block';
+            } else {
+                results.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target !== input) results.style.display = 'none';
+        });
     });
 </script>
 {% endblock %}

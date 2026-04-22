@@ -5,6 +5,10 @@ import json
 from sklearn.metrics.pairwise import cosine_similarity
 from pydantic import BaseModel
 from huggingface_hub import InferenceClient
+from dotenv import load_dotenv
+
+# Chargement des variables d'environnement (.env)
+load_dotenv()
 
 app = FastAPI(title="Animetix Brain API")
 
@@ -13,10 +17,17 @@ DATA_PATH = os.path.join(BASE_DIR, "data", "artifacts")
 
 # Clients & Data
 brain_data = {}
-# On utilise l'Inference API gratuite de HF pour Llama 3.2
+token = os.getenv("HF_TOKEN") or os.getenv("HF_SPACES")
+
+if token:
+    print(f"🔑 Token loaded: {token[:4]}...{token[-4:]}")
+else:
+    print("❌ ERROR: No Hugging Face token found in environment variables!")
+
+# On utilise Llama 3.1 8B qui est plus stable sur l'API gratuite
 llm_client = InferenceClient(
-    model="meta-llama/Llama-3.2-3B-Instruct",
-    token=os.getenv("HF_TOKEN")
+    model="meta-llama/Llama-3.1-8B-Instruct",
+    token=token
 )
 
 def load_vectors():
@@ -31,6 +42,16 @@ def load_vectors():
 @app.on_event("startup")
 async def startup_event():
     load_vectors()
+    # Test de connexion au LLM via l'API Chat (conversational)
+    print("🤖 Testing LLM connectivity (Conversational mode)...")
+    try:
+        test = llm_client.chat_completion(
+            messages=[{"role": "user", "content": "Hi"}],
+            max_tokens=1
+        )
+        print("✅ LLM Connectivity OK.")
+    except Exception as e:
+        print(f"❌ LLM Connectivity Failed: {e}")
 
 class SimilarityRequest(BaseModel):
     mode: str
@@ -65,6 +86,7 @@ async def generate_text(req: GenerateRequest):
             response += message.choices[0].delta.content or ""
         return {"text": response}
     except Exception as e:
+        print(f"❌ Brain Generation Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")

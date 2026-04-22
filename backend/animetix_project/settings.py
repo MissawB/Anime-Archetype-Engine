@@ -45,15 +45,16 @@ CSRF_TRUSTED_ORIGINS = [
     "https://missawb-animetix-web.hf.space" # Ajout explicite
 ]
 
-# Réglages des cookies pour la production (Hugging Face est en HTTPS)
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SAMESITE = 'None'
+# Réglages des cookies : Sécurisés en PROD (HTTPS), Souples en DEV (HTTP)
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = 'Lax' if DEBUG else 'None'
+SESSION_COOKIE_SAMESITE = 'Lax' if DEBUG else 'None'
 
-# Indique à Django qu'il est derrière un proxy HTTPS
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-USE_X_FORWARDED_HOST = True
+# Indique à Django qu'il est derrière un proxy HTTPS (uniquement en PROD)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
 # -----------------------------------------------
 
 
@@ -91,6 +92,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'animetix.context_processors.translation_processor',
             ],
         },
     },

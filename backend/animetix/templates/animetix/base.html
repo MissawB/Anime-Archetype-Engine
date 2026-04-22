@@ -1,174 +1,368 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Animetix{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@700;800&family=Georgia&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <style>
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; }
-        .wrapper { display: flex; align-items: stretch; width: 100%; overflow-x: hidden; }
-        
-        /* Sidebar Styles */
-        #sidebar {
-            min-width: 250px;
-            max-width: 250px;
-            background: #1a1a2e;
-            color: #fff;
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.9);
+            --text-main: #1a1a2e;
+            --text-muted: #535c68;
+            --card-bg: #ffffff;
+            --accent-color: #0d6efd;
+            --sidebar-width: 280px;
+        }
+
+        [data-bs-theme="dark"] {
+            --glass-bg: rgba(20, 20, 35, 0.95);
+            --text-main: #f1f2f6;
+            --text-muted: #a4b0be;
+            --card-bg: #1e1e2f;
+            --accent-color: #3786ff;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f0f2f5; 
+            color: var(--text-main);
             transition: all 0.3s ease;
-            min-height: 100vh;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
         }
-        #sidebar.active {
-            margin-left: -250px;
-        }
-        
-        #sidebar .sidebar-header { padding: 20px; background: #16213e; position: relative; }
-        
-        .sidebar-toggle-btn {
+
+        [data-bs-theme="dark"] body { background-color: #0f0f1a; }
+
+        /* SIDEBAR STYLE */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
             position: fixed;
-            left: 20px;
-            top: 20px;
-            z-index: 999;
-            background: #1a1a2e;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            display: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            transition: all 0.3s;
+            left: 0;
+            top: 0;
+            background: var(--card-bg);
+            border-right: 1px solid rgba(0,0,0,0.05);
+            z-index: 1000;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
         }
 
-        #sidebar.active + #content .sidebar-toggle-btn {
-            display: block;
+        [data-bs-theme="dark"] .sidebar { border-right-color: rgba(255,255,255,0.05); }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 2rem;
+            transition: margin-left 0.3s ease;
         }
 
-        .close-sidebar {
-            position: absolute;
-            right: 10px;
-            top: 20px;
-            background: transparent;
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); }
+            .main-content { margin-left: 0; }
+            .sidebar.active { transform: translateX(0); }
+        }
+
+        /* SÉLECTEUR DE DIFFICULTÉ ORIGINAL */
+        .difficulty-gauge {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(0,0,0,0.03);
+            border-radius: 15px;
+        }
+        [data-bs-theme="dark"] .difficulty-gauge { background: rgba(255,255,255,0.03); }
+
+        .diff-btn {
             border: none;
-            color: white;
-            font-size: 1.5rem;
+            background: none;
+            padding: 12px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-muted);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: pointer;
-            opacity: 0.7;
-        }
-        .close-sidebar:hover { opacity: 1; }
-
-        #content {
             width: 100%;
-            padding: 40px;
-            transition: all 0.3s ease;
-            min-height: 100vh;
         }
 
-        #sidebar ul li a {
-            padding: 15px 20px;
-            font-size: 1.1em;
-            display: block;
-            color: rgba(255, 255, 255, 0.7);
-            text-decoration: none;
-            transition: 0.3s;
+        .diff-btn .rank-letter {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 900;
+            font-size: 1.4rem;
+            opacity: 0.3;
         }
-        #sidebar ul li a:hover { color: #fff; background: #e94560; }
-        #sidebar ul li.active > a { color: #fff; background: #e94560; font-weight: bold; }
-        
-        .mode-toggle { margin: 20px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 15px; }
-        .card { border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-primary { background-color: #e94560; border: none; }
-        .btn-primary:hover { background-color: #c62a48; }
-        .ts-control { border-radius: 10px !important; border: 2px solid #ced4da !important; padding: 10px !important; }
+
+        .diff-btn.selected {
+            background: var(--accent-color);
+            color: white !important;
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(var(--bs-primary-rgb), 0.3);
+        }
+
+        .diff-btn.selected .rank-letter {
+            opacity: 1;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .diff-btn.selected .diff-label { font-weight: bold; }
+
+        .nav-pills .nav-link {
+            color: var(--text-main);
+            font-weight: 500;
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .nav-pills .nav-link.active { background: var(--accent-color); color: white !important; }
+
+        .sidebar-header {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            padding: 0 1rem;
+        }
+
+        h1, h2, h3, h4, h5, .navbar-brand { font-family: 'Montserrat', sans-serif; font-weight: 800; }
+
+        .settings-btn {
+            position: fixed; right: 30px; bottom: 30px; z-index: 1050;
+            width: 55px; height: 55px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: rotate(45deg);
+            border-radius: 12px;
+        }
+        .settings-btn i {
+            transform: rotate(-45deg);
+            transition: transform 0.4s ease;
+            font-size: 1.6rem;
+        }
+        .settings-btn.active {
+            transform: rotate(0deg);
+            border-radius: 15px;
+            background: var(--accent-color);
+            color: white;
+        }
+        .settings-btn.active i {
+            transform: rotate(0deg);
+        }
+        .settings-btn:hover {
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
-    <div class="wrapper">
-        <!-- Sidebar -->
-        <nav id="sidebar" class="shadow-lg">
-            <div class="sidebar-header text-center">
-                <h3 class="fw-bold m-0">🧩 Animetix</h3>
-                <button type="button" id="sidebarCollapse" class="close-sidebar d-none d-md-block">
-                    <span>&laquo;</span>
-                </button>
-            </div>
 
-            <div class="mode-toggle text-center">
-                <p class="small text-uppercase opacity-50 mb-2">SÉLECTION DE L'UNIVERS</p>
-                <div class="btn-group w-100 mb-2" role="group">
-                    <a href="{% url 'switch_mode' 'Anime' %}" class="btn btn-sm {% if request.session.media_type == 'Anime' or not request.session.media_type %}btn-primary{% else %}btn-outline-light{% endif %}">
-                        Animé 🎌
-                    </a>
-                    <a href="{% url 'switch_mode' 'Manga' %}" class="btn btn-sm {% if request.session.media_type == 'Manga' %}btn-primary{% else %}btn-outline-light{% endif %}">
-                        Manga 📚
-                    </a>
-                </div>
-                <a href="{% url 'switch_mode' 'Character' %}" class="btn btn-sm w-100 {% if request.session.media_type == 'Character' %}btn-primary{% else %}btn-outline-light{% endif %}">
-                    Personnage 👤
-                </a>
-            </div>
+    <!-- SIDEBAR -->
+    <div class="sidebar shadow-sm" id="sidebar">
+        <div class="sidebar-header">
+            <a href="{% url 'index' %}" class="text-decoration-none">
+                <span class="text-primary fs-4">🧩 ANIMETIX</span>
+            </a>
+        </div>
 
-            <ul class="list-unstyled components mt-4">
-                <li class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">
-                    <a href="{% url 'index' %}">🏠 Accueil</a>
+        <div class="flex-grow-1 overflow-auto">
+            <!-- NAVIGATION DES JEUX (EN HAUT) -->
+            <label class="small text-uppercase fw-bold opacity-50 mb-2 px-3 d-block">Jeux</label>
+            <ul class="nav nav-pills flex-column px-2 mb-4">
+                <li class="nav-item">
+                    <a href="{% url 'game' %}" class="nav-link {% if request.resolver_match.url_name == 'game' %}active{% endif %}">
+                        <i class="bi bi-bullseye"></i> {{ txt.mode_classic_title }}
+                    </a>
                 </li>
-                <li class="{% if request.resolver_match.url_name == 'game' %}active{% endif %}">
-                    <a href="{% url 'game' %}">🎯 Animetix Classic</a>
+                <li class="nav-item">
+                    <a href="{% url 'paradox' %}" class="nav-link {% if request.resolver_match.url_name == 'paradox' %}active{% endif %}">
+                        <i class="bi bi-puzzle-fill"></i> {{ txt.nav_paradox }}
+                    </a>
                 </li>
-                <li class="{% if request.resolver_match.url_name == 'archetypist' %}active{% endif %}">
-                    <a href="{% url 'archetypist' %}">🎬 Story Archetypist</a>
+                <li class="nav-item">
+                    <a href="{% url 'archetypist' %}" class="nav-link {% if request.resolver_match.url_name == 'archetypist' %}active{% endif %}">
+                        <i class="bi bi-magic"></i> {{ txt.nav_archetypist }}
+                    </a>
                 </li>
-                <li class="{% if request.resolver_match.url_name == 'paradox' %}active{% endif %}">
-                    <a href="{% url 'paradox' %}">🧩 Le Paradoxe</a>
-                </li>
-                <li class="{% if request.resolver_match.url_name == 'undercover_party_setup' %}active{% endif %}">
-                    <a href="{% url 'undercover_party_setup' %}">🕵️ Undercover Party</a>
+                <li class="nav-item">
+                    <a href="{% url 'undercover_party_setup' %}" class="nav-link {% if 'undercover' in request.path %}active{% endif %}">
+                        <i class="bi bi-incognito"></i> {{ txt.nav_undercover }}
+                    </a>
                 </li>
             </ul>
-            
-            <div class="mt-auto p-4 text-center">
-                <hr class="opacity-25">
-                <small class="text-muted">Mode Actuel :<br><strong>{{ request.session.media_type|default:"Anime" }}</strong></small>
-            </div>
-        </nav>
 
-        <!-- Page Content -->
-        <div id="content">
-            <button type="button" id="sidebarOpen" class="sidebar-toggle-btn">
-                <span>&raquo;</span>
-            </button>
-            <div class="container-fluid">
-                {% block content %}{% endblock %}
+            <hr class="mx-3 opacity-10">
+
+            <!-- SÉLECTEUR DE MÉDIA -->
+            <div class="mb-4 px-2">
+                <label class="small text-uppercase fw-bold opacity-50 mb-2 px-2 d-block">Média</label>
+                <div class="d-flex gap-1 bg-light p-1 rounded-3" style="background: rgba(0,0,0,0.05) !important;">
+                    <a href="{% url 'switch_mode' 'Anime' %}" class="btn btn-sm flex-grow-1 {% if request.session.media_type == 'Anime' or not request.session.media_type %}btn-white shadow-sm fw-bold{% else %}btn-link text-decoration-none text-muted{% endif %}" style="border-radius: 8px;">TV</a>
+                    <a href="{% url 'switch_mode' 'Manga' %}" class="btn btn-sm flex-grow-1 {% if request.session.media_type == 'Manga' %}btn-white shadow-sm fw-bold{% else %}btn-link text-decoration-none text-muted{% endif %}" style="border-radius: 8px;">Livre</a>
+                    <a href="{% url 'switch_mode' 'Character' %}" class="btn btn-sm flex-grow-1 {% if request.session.media_type == 'Character' %}btn-white shadow-sm fw-bold{% else %}btn-link text-decoration-none text-muted{% endif %}" style="border-radius: 8px;">Perso</a>
+                </div>
+            </div>
+
+            <!-- SÉLECTEUR DE DIFFICULTÉ -->
+            <div class="mb-4 px-2">
+                <label class="small text-uppercase fw-bold opacity-50 mb-2 px-2 d-block">Rank</label>
+                <div class="difficulty-gauge" id="global-diff-selector">
+                    <button class="diff-btn {% if request.session.difficulty == 'Easy' %}selected{% endif %}" data-value="Easy">
+                        <span class="diff-label small">{{ txt.diff_easy }}</span>
+                        <span class="rank-letter">C</span>
+                    </button>
+                    <button class="diff-btn {% if request.session.difficulty == 'Normal' or not request.session.difficulty %}selected{% endif %}" data-value="Normal">
+                        <span class="diff-label small">{{ txt.diff_normal }}</span>
+                        <span class="rank-letter">B</span>
+                    </button>
+                    <button class="diff-btn {% if request.session.difficulty == 'Hard' %}selected{% endif %}" data-value="Hard">
+                        <span class="diff-label small">{{ txt.diff_hard }}</span>
+                        <span class="rank-letter">A</span>
+                    </button>
+                    <button class="diff-btn {% if request.session.difficulty == 'Impossible' %}selected{% endif %}" data-value="Impossible">
+                        <span class="diff-label small">ZENITH</span>
+                        <span class="rank-letter text-warning">S</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    <!-- MAIN CONTENT -->
+    <div class="main-content d-flex flex-column min-vh-100">
+        <div class="flex-grow-1">
+            <button class="btn btn-white d-lg-none shadow-sm mb-4 border" onclick="document.getElementById('sidebar').classList.toggle('active')">
+                <i class="bi bi-list fs-4"></i>
+            </button>
+            {% block content %}{% endblock %}
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="mt-5 pt-5 pb-5 border-top opacity-75">
+            <div class="row g-4 small text-muted">
+                <div class="col-6 col-md-3">
+                    <h6 class="fw-bold mb-2 text-main">Moteurs IA</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li><i class="bi bi-robot me-2"></i>Llama 3.1 🦙</li>
+                        <li><i class="bi bi-stars me-2"></i>Gemini 2.0 ✨</li>
+                        <li><i class="bi bi-search me-2"></i>Embeddings</li>
+                    </ul>
+                </div>
+                <div class="col-6 col-md-3">
+                    <h6 class="fw-bold mb-2 text-main">Architecture</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li><i class="bi bi-layers me-2"></i>Django 6.0</li>
+                        <li><i class="bi bi-lightning-charge-fill me-2"></i>FastAPI</li>
+                        <li><i class="bi bi-diagram-2 me-2"></i>Dagster</li>
+                        <li><i class="bi bi-box-seam me-2"></i>Docker</li>
+                    </ul>
+                </div>
+                <div class="col-6 col-md-3">
+                    <h6 class="fw-bold mb-2 text-main">Ressources</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li><a href="https://huggingface.co/MissawB" class="text-decoration-none text-muted" target="_blank"><i class="bi bi-cpu-fill me-2"></i>HF Space</a></li>
+                        <li><a href="#" class="text-decoration-none text-muted"><i class="bi bi-github me-2"></i>GitHub</a></li>
+                        <li><a href="#" class="text-decoration-none text-muted"><i class="bi bi-discord me-2"></i>Discord</a></li>
+                    </ul>
+                </div>
+                <div class="col-6 col-md-3 text-md-end">
+                    <p class="fw-bold mb-1 text-main">{{ txt.footer_rights }}</p>
+                    <p class="mb-1">{{ txt.footer_built }}</p>
+                    <p class="text-success mb-0"><i class="bi bi-check-circle-fill me-1"></i> {{ txt.footer_status }}</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- SETTINGS -->
+    <button class="btn btn-primary settings-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#settingsSidebar">
+        <i class="bi bi-gear-fill"></i>
+    </button>
+
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="settingsSidebar" style="border-radius: 30px 0 0 30px;">
+        <div class="offcanvas-header border-bottom">
+            <h4 class="offcanvas-title">{{ txt.settings_title }}</h4>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-5">
+                <label class="form-label fw-bold small text-uppercase opacity-75 mb-3">{{ txt.settings_lang }}</label>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'switch_lang' 'Français' %}" class="btn {% if request.session.language == 'Français' or not request.session.language %}btn-primary{% else %}btn-outline-primary{% endif %} flex-grow-1">Français</a>
+                    <a href="{% url 'switch_lang' 'English' %}" class="btn {% if request.session.language == 'English' %}btn-primary{% else %}btn-outline-primary{% endif %} flex-grow-1">English</a>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold small text-uppercase opacity-75 mb-3">{{ txt.settings_theme }}</label>
+                <div class="btn-group w-100 shadow-sm" role="group">
+                    <input type="radio" class="btn-check" name="theme-choice" id="theme-light" value="light">
+                    <label class="btn btn-outline-primary py-2" for="theme-light"><i class="bi bi-sun-fill"></i></label>
+                    <input type="radio" class="btn-check" name="theme-choice" id="theme-auto" value="auto">
+                    <label class="btn btn-outline-primary py-2" for="theme-auto"><i class="bi bi-laptop"></i></label>
+                    <input type="radio" class="btn-check" name="theme-choice" id="theme-dark" value="dark">
+                    <label class="btn btn-outline-primary py-2" for="theme-dark"><i class="bi bi-moon-stars-fill"></i></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const sidebar = document.getElementById('sidebar');
-            const collapseBtn = document.getElementById('sidebarCollapse');
-            const openBtn = document.getElementById('sidebarOpen');
-
-            if (localStorage.getItem('sidebar-active') === 'true') {
-                sidebar.classList.add('active');
-            }
-
-            collapseBtn.addEventListener('click', function() {
-                sidebar.classList.add('active');
-                localStorage.setItem('sidebar-active', 'true');
-            });
-
-            openBtn.addEventListener('click', function() {
-                sidebar.classList.remove('active');
-                localStorage.setItem('sidebar-active', 'false');
+        // LOGIQUE THÈME
+        const html = document.documentElement;
+        const radios = document.querySelectorAll('input[name="theme-choice"]');
+        function setTheme(theme) {
+            if (theme === 'auto') {
+                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                html.setAttribute('data-bs-theme', systemDark ? 'dark' : 'light');
+            } else { html.setAttribute('data-bs-theme', theme); }
+        }
+        const savedTheme = localStorage.getItem('theme') || 'auto';
+        setTheme(savedTheme);
+        if(document.querySelector(`input[value="${savedTheme}"]`)) {
+            document.querySelector(`input[value="${savedTheme}"]`).checked = true;
+        }
+        radios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const newTheme = e.target.value;
+                setTheme(newTheme);
+                localStorage.setItem('theme', newTheme);
             });
         });
+
+        // --- LOGIQUE DIFFICULTÉ SIDEBAR ---
+        const diffButtons = document.querySelectorAll('.diff-btn');
+        diffButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const val = this.getAttribute('data-value');
+                fetch(`/switch_diff/${val}/`).then(() => {
+                    diffButtons.forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                    if (window.location.pathname === '/' || window.location.pathname.includes('/game/')) {
+                        window.location.reload();
+                    }
+                });
+            });
+        });
+
+        // ANIMATION BOUTON PARAMÈTRES
+        const settingsSidebar = document.getElementById('settingsSidebar');
+        const settingsBtn = document.querySelector('.settings-btn');
+        settingsSidebar.addEventListener('show.bs.offcanvas', () => settingsBtn.classList.add('active'));
+        settingsSidebar.addEventListener('hide.bs.offcanvas', () => settingsBtn.classList.remove('active'));
     </script>
     {% block extra_js %}{% endblock %}
 </body>

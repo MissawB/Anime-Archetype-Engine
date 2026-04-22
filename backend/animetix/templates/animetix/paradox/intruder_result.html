@@ -1,42 +1,67 @@
 {% extends 'animetix/base.html' %}
 
-{% block title %}Animetix - Résultat{% endblock %}
+{% block title %}Animetix - Résultat Paradoxe{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center text-center">
-    <div class="col-md-8">
+<div class="row justify-content-center">
+    <div class="col-md-10 text-center">
         {% if is_correct %}
-        <div class="alert alert-success py-5">
-            <h1 class="display-3">🎉 BIEN JOUÉ !</h1>
-            <p class="lead mt-3">Vous avez démasqué l'intrus : <strong>{{ answer }}</strong>.</p>
-        </div>
+            <div class="alert alert-success p-4 shadow-lg mb-5" style="border-radius: 20px;">
+                <h1 class="display-4 mb-0">🎯 {{ txt.paradox_win }}</h1>
+            </div>
         {% else %}
-        <div class="alert alert-danger py-5">
-            <h1 class="display-3">😢 DOMMAGE !</h1>
-            <p class="lead mt-3">L'intrus était bien <strong>{{ answer }}</strong>.</p>
-        </div>
+            <div class="alert alert-danger p-4 shadow-lg mb-5" style="border-radius: 20px;">
+                <h1 class="display-4 mb-0">{{ txt.paradox_loss }}</h1>
+            </div>
         {% endif %}
 
-        <div class="card mb-5 shadow-sm">
-            <div class="row g-0">
-                <div class="col-md-4">
-                    {% if answer_data.image %}
-                    <img src="{{ answer_data.image }}" class="img-fluid rounded-start" alt="{{ answer }}">
-                    {% endif %}
-                </div>
-                <div class="col-md-8">
-                    <div class="card-body text-start">
-                        <h5 class="card-title">{{ answer }} {% if answer_data.year %}({{ answer_data.year }}){% endif %}</h5>
-                        <p class="card-text text-muted small">{{ answer_data.tags|join:", " }}</p>
-                        <p class="card-text">{{ answer_data.description }}</p>
+        <div class="row g-4 mb-5 justify-content-center">
+            {% for opt in final_options %}
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-lg overflow-hidden" 
+                     style="border-radius: 25px; {% if opt.is_intruder %}outline: 5px solid #198754; outline-offset: 3px;{% endif %}">
+                    
+                    <div style="height: 500px; position: relative;">
+                        {% if opt.image %}
+                        <img src="{{ opt.image }}" class="w-100 h-100" style="object-fit: cover;" alt="{{ opt.title }}">
+                        {% endif %}
+                        
+                        <!-- Badges d'état -->
+                        <div class="position-absolute top-0 end-0 p-3">
+                            {% if opt.is_intruder %}
+                                <span class="badge bg-success shadow-lg fs-6">🎯 INTRUS</span>
+                            {% else %}
+                                <span class="badge bg-secondary shadow-sm opacity-75">BASE</span>
+                            {% endif %}
+                        </div>
+
+                        {% if opt.is_user_choice %}
+                        <div class="position-absolute bottom-0 start-0 w-100 bg-primary bg-opacity-75 text-white py-2 small fw-bold text-uppercase" style="backdrop-filter: blur(5px);">
+                            {{ txt.table_guess }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-body p-4 text-start">
+                        <h5 class="fw-bold mb-1 text-truncate" title="{{ opt.title }}">{{ opt.title }}</h5>
+                        <div class="small text-muted text-truncate mb-1">{{ opt.title_english }}</div>
+                        <div class="small text-info text-truncate">{{ opt.title_native }}</div>
                     </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
 
-        <div class="d-grid gap-2 d-md-block">
-            <a href="{% url 'archetypist' %}" class="btn btn-primary btn-lg px-5">Rejouer</a>
-            <a href="{% url 'index' %}" class="btn btn-outline-secondary btn-lg px-5">Accueil</a>
+        {% if reasoning %}
+        <div class="alert alert-light border-start border-info border-4 shadow-sm text-start mb-5 mx-auto" style="max-width: 800px; border-radius: 15px;">
+            <strong class="text-info">🧠 {{ txt.reasoning_title }} :</strong><br>
+            <span class="text-secondary" style="font-style: italic;">{{ reasoning }}</span>
+        </div>
+        {% endif %}
+
+        <div class="d-grid gap-3 col-md-4 mx-auto mb-5">
+            <a href="{% url 'paradox' %}" class="btn btn-primary btn-lg shadow-sm">{{ txt.btn_play }}</a>
+            <a href="{% url 'index' %}" class="btn btn-outline-secondary">{{ txt.btn_back }}</a>
         </div>
     </div>
 </div>
